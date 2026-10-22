@@ -382,12 +382,11 @@ var QUIPS = {
    «СВОЯ ЛОГИКА» — движок. Одна страница, три режима:
    #        — экран для проектора;
    #host    — пульт ведущего (ответы видны всегда);
-   #key     — ответы на печать.
    Окна на одном компьютере синхронизируются через localStorage.
    ============================================================ */
 var G_URL = "https://script.google.com/macros/s/AKfycbz20ybgl-VjmUEvs-Xv1_217_E6rIaHKvf8jIWEZkEY-i6CFblypmI-xSXilsvMa--bFQ/exec";
 var ST_KEY = "svoya_logika_v1";
-var ROLE = /host/.test(location.hash) ? "host" : (/key/.test(location.hash) ? "key" : "screen");
+var ROLE = /host/.test(location.hash) ? "host" : "screen";
 var S = null;
 var SOUND = true;
 try { SOUND = localStorage.getItem("svoya_mute") !== "1"; } catch (e) {}
@@ -649,7 +648,6 @@ function timerHtml(t0, sec) {
 var ANIM = { q: null, rev: null };
 function render() {
   document.body.className = "role-" + ROLE + " ph-" + S.phase;
-  if (ROLE === "key") { $("app").innerHTML = keyHtml(); return; }
   var h;
   if (S.phase === "setup") h = setupHtml();
   else {
@@ -675,7 +673,7 @@ function setupHtml() {
   h += '</div><button class="btn gold big" data-a="start">Начать игру</button>' +
     '<div class="setup-links">' +
     '<button class="lnk" data-a="host">Открыть пульт ведущего в отдельном окне</button>' +
-    '<button class="lnk" data-a="key">Ответы на печать</button></div>' +
+    '</div>' +
     '<details class="rules"><summary>Правила для команд</summary><ul>' +
     '<li>Команды выбирают вопрос по очереди. Первой отвечает выбравшая команда.</li>' +
     '<li>Верно — плюс стоимость вопроса. Неверно — минус, и вопрос переходит следующей команде. Можно спасовать без штрафа.</li>' +
@@ -844,20 +842,6 @@ function endHtml() {
   return h;
 }
 
-function keyHtml() {
-  var h = '<div class="key"><h1>«Своя логика» — ответы для ведущего</h1><p class="kmeta">Тема 3. Обычные вопросы — таблица 5 × 5. Клетки «кот в мешке» и аукцион выпадают случайно в начале каждой игры.</p>';
-  CATS.forEach(function (c) {
-    h += '<h2>' + esc(c.name) + '</h2><table>';
-    c.qs.forEach(function (q, r) { h += '<tr><td class="kv">' + VALUES[r] + '</td><td><b>' + esc(q.q) + '</b><br>Ответ: ' + esc(q.a) + '<br><span>' + esc(q.x) + '</span></td></tr>'; });
-    h += '</table>';
-  });
-  h += '<h2>Кот в мешке</h2><table>';
-  CAT_QS.forEach(function (q) { h += '<tr><td class="kv">кот</td><td><i>' + esc(q.theme) + '.</i> <b>' + esc(q.q) + '</b><br>Ответ: ' + esc(q.a) + '<br><span>' + esc(q.x) + '</span></td></tr>'; });
-  h += '</table><h2>Финал</h2><table><tr><td class="kv">фин</td><td><i>' + esc(FINAL.theme) + '.</i> <b>' + esc(FINAL.q) + '</b><br>Ответ: ' + esc(FINAL.a) + '<br><span>' + esc(FINAL.x) + '</span></td></tr></table>';
-  h += '<button class="btn gold noprint" onclick="window.print()">Печать</button></div>';
-  return h;
-}
-
 /* ---------- события ---------- */
 document.addEventListener("click", function (e) {
   var b = e.target.closest ? e.target.closest("[data-a]") : null;
@@ -865,7 +849,6 @@ document.addEventListener("click", function (e) {
   var a = b.getAttribute("data-a"), i = +b.getAttribute("data-i");
   if (a === "start") startGame();
   else if (a === "host") window.open(location.href.split("#")[0] + "#host", "svoya_host", "width=1100,height=800");
-  else if (a === "key") window.open(location.href.split("#")[0] + "#key", "_blank");
   else if (a === "cell") openCell(+b.getAttribute("data-c"), +b.getAttribute("data-r"));
   else if (a === "ok") judge("ok");
   else if (a === "bad") judge("bad");
