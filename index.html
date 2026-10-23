@@ -247,7 +247,6 @@ input{font:inherit}
    непосредственные умозаключения) и вход в силлогизм.
    Логического квадрата нет намеренно.
    ============================================================ */
-var HOST = "Аркадий Модусов";
 var VALUES = [100, 200, 300, 400, 500];
 var TEAMS_N = 4;
 var Q_SEC = 30;      // таймер на обычный вопрос
@@ -664,7 +663,6 @@ function render() {
 
 function setupHtml() {
   var h = '<div class="cover"><div class="onair">В эфире</div><h1 class="logo-big">Своя<br>логика</h1>' +
-    '<p class="host-line">Ведущий — ' + esc(HOST) + '</p>' +
     '<p class="tag">' + esc(S.quip) + '</p>' +
     '<div class="setup">' +
     '<label class="field wide"><span>Группа</span><input id="grp" maxlength="20" placeholder="например, СП-201" value="' + esc(S.group) + '"></label>';
@@ -837,7 +835,7 @@ function endHtml() {
   r.forEach(function (t) {
     h += '<li class="p' + t.p + '"><span class="pl">' + t.p + '</span><span class="rn">' + esc(t.n) + '</span><span class="rs' + (t.s < 0 ? " neg" : "") + '">' + fmt(t.s) + '</span></li>';
   });
-  h += '</ol><p class="quip">Спасибо командам! С вами был ' + esc(HOST) + '. Логика — это когда всё сходится.</p>' +
+  h += '</ol><p class="quip">Спасибо командам!</p>' +
     '<p id="sendSt" class="sendst"></p><button class="btn plate" id="sendBtn" data-a="send" hidden>Отправить ещё раз</button></section>';
   return h;
 }
