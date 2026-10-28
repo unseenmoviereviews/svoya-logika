@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Апелляция</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Телестудия 90-х на проекторе: тёмно-синий павильон, синие клетки табло, золотые цифры.
+   Всё в единицах экрана, чтобы одинаково читалось и на 1024×768, и на 1920×1080. */
+:root{
+  --studio:#241018; --night:#0E070B; --cell:#7A2232; --cell-2:#4E1320; --edge:#B85A68;
+  --gold:#FFC21A; --gold-d:#9A6B00; --magenta:#E8337F; --cyan:#F3C98B;
+  --ink:#141A3C; --card:#fff; --dim:#5B6390;
+  --ok:#18A864; --bad:#DE3F46;
+  --f-show:"Unbounded","Arial Black","Segoe UI",system-ui,sans-serif;
+  --f-body:"Golos Text","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+  --u:min(1vw,1.78vh);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;color:#fff;font:calc(var(--u)*1.6)/1.4 var(--f-body);-webkit-font-smoothing:antialiased;
+  background-color:var(--studio);
+  background-image:
+    radial-gradient(50% 45% at 6% 0%,rgba(184,90,104,.30),transparent 70%),
+    radial-gradient(50% 45% at 96% 0%,rgba(255,194,26,.14),transparent 70%),
+    radial-gradient(70% 40% at 50% 108%,rgba(255,194,26,.16),transparent 70%),
+    linear-gradient(180deg,var(--studio) 0%,var(--night) 100%);
+  overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+#app{height:100%;display:flex;flex-direction:column}
+
+/* ---------- кнопки ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5em;border-radius:calc(var(--u)*.8);
+  padding:calc(var(--u)*1) calc(var(--u)*2.2);font-weight:600;font-size:calc(var(--u)*1.6);min-height:calc(var(--u)*4.4);
+  transition:transform .12s ease,filter .12s ease}
+.btn:hover:not([disabled]){filter:brightness(1.12)}
+.btn:active:not([disabled]){transform:translateY(1px)}
+.btn[disabled]{opacity:.4;cursor:default}
+.btn.gold{background:var(--gold);color:#221900;box-shadow:0 0 calc(var(--u)*2) rgba(255,194,26,.35)}
+.btn.big{font-size:calc(var(--u)*2);padding:calc(var(--u)*1.3) calc(var(--u)*3.4)}
+.btn.ok{background:var(--ok)}
+.btn.bad{background:var(--bad)}
+.btn.ok.on,.btn.bad.on{box-shadow:0 0 0 3px #fff inset}
+.btn.plate{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28)}
+.btn.plate.on{background:var(--gold);color:#221900;border-color:var(--gold)}
+.btn.plate small{display:block;font-size:.75em;opacity:.75;margin-left:.5em}
+.btn.ghost{border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85)}
+.lnk{color:var(--cyan);text-decoration:underline;text-underline-offset:3px;font-size:calc(var(--u)*1.4)}
+
+/* ---------- обложка и настройка ---------- */
+.cover{margin:auto;text-align:center;padding:calc(var(--u)*2.4) calc(var(--u)*3);max-width:calc(var(--u)*90);overflow:auto;max-height:100%}
+.onair{display:inline-block;background:var(--magenta);font:700 calc(var(--u)*1.2)/1 var(--f-show);letter-spacing:.24em;text-transform:uppercase;
+  padding:.6em 1em .5em;border-radius:3px;box-shadow:0 0 calc(var(--u)*2.4) rgba(232,51,127,.6);animation:blink 2.4s ease-in-out infinite}
+@keyframes blink{50%{opacity:.55}}
+.logo-big{font:700 calc(var(--u)*6.6)/.92 var(--f-show);text-transform:uppercase;letter-spacing:-.02em;margin:calc(var(--u)*2) 0 calc(var(--u)*1);
+  color:var(--gold);text-shadow:0 0 calc(var(--u)*4) rgba(255,194,26,.45),0 calc(var(--u)*.45) 0 var(--gold-d)}
+.host-line{color:var(--cyan);font-weight:600;margin:0 0 calc(var(--u)*.6)}
+.tag{color:rgba(255,255,255,.84);max-width:46ch;margin:0 auto calc(var(--u)*1.8)}
+.setup{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*1.2);text-align:left;margin-bottom:calc(var(--u)*2.4)}
+.field{display:block}
+.field.wide{grid-column:1/-1;max-width:calc(var(--u)*30);justify-self:center;width:100%}
+.field span{display:block;font-size:calc(var(--u)*1.1);color:rgba(255,255,255,.66);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.4em}
+.field input{width:100%;padding:.6em .8em;border-radius:calc(var(--u)*.7);border:1.5px solid rgba(255,255,255,.25);
+  background:rgba(14,6,10,.55);color:#fff;font-size:calc(var(--u)*1.6)}
+.field input:focus{border-color:var(--gold);outline:none}
+.setup-links{display:flex;gap:calc(var(--u)*2.4);justify-content:center;margin:calc(var(--u)*1.8) 0 calc(var(--u)*1.2);flex-wrap:wrap}
+.rules{max-width:calc(var(--u)*70);margin:0 auto;text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+  border-radius:calc(var(--u)*1);padding:calc(var(--u)*1) calc(var(--u)*1.6);font-size:calc(var(--u)*1.4)}
+.rules summary{cursor:pointer;font-weight:600}
+.rules li{margin:.3em 0}
+
+/* ---------- шапка ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*2);padding:calc(var(--u)*1) calc(var(--u)*2);
+  border-bottom:1px solid rgba(255,255,255,.1);background:rgba(14,6,10,.4)}
+.brand{font:700 calc(var(--u)*1.9)/1 var(--f-show);text-transform:uppercase;color:var(--gold);letter-spacing:.02em;display:flex;align-items:baseline;gap:.7em}
+.brand small{font:500 calc(var(--u)*1.3)/1 var(--f-body);color:rgba(255,255,255,.7);text-transform:none;letter-spacing:0}
+.tools{display:flex;gap:calc(var(--u)*.8);align-items:center}
+.tool{font-size:calc(var(--u)*1.2);padding:.45em .9em;border-radius:999px;border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.8)}
+.tool:hover:not([disabled]){background:rgba(255,255,255,.1)}
+.tool[disabled]{opacity:.35;cursor:default}
+.hostmark{font-size:calc(var(--u)*1.2);background:var(--magenta);padding:.45em .9em;border-radius:999px;font-weight:600}
+/* На проекторе служебные кнопки приглушены, чтобы не спорили с табло. */
+.role-screen .tools{opacity:.45;transition:opacity .2s}
+.role-screen .tools:hover{opacity:1}
+
+/* ---------- сцена ---------- */
+.stage{flex:1;min-height:0;display:flex;flex-direction:column;padding:calc(var(--u)*1.6) calc(var(--u)*2);position:relative}
+.board{flex:1;min-height:0;display:grid;grid-template-columns:repeat(var(--cols,5),1fr);grid-template-rows:auto repeat(5,1fr);gap:calc(var(--u)*.8)}
+.bh{display:flex;align-items:center;justify-content:center;text-align:center;font:700 calc(var(--u)*1.45)/1.15 var(--f-show);text-transform:uppercase;
+  letter-spacing:.02em;padding:calc(var(--u)*1.2) calc(var(--u)*.6);color:#fff;
+  background:linear-gradient(180deg,#8C2C3C,#5A1826);border-radius:calc(var(--u)*.6);border:1px solid var(--edge);text-wrap:balance}
+.cell{display:flex;align-items:center;justify-content:center;border-radius:calc(var(--u)*.6);
+  background:linear-gradient(180deg,var(--cell),var(--cell-2));border:1px solid var(--edge);
+  font:700 calc(var(--u)*4.2)/1 var(--f-show);color:var(--gold);text-shadow:0 calc(var(--u)*.3) 0 var(--gold-d),0 0 calc(var(--u)*2) rgba(255,194,26,.35);
+  transition:transform .12s ease,box-shadow .12s ease}
+.cell:hover{transform:scale(1.035);box-shadow:0 0 calc(var(--u)*2.4) rgba(184,90,104,.8)}
+.cell.used{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.07);cursor:default}
+.board-done{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*1.4);
+  background:rgba(20,8,14,.72);font:700 calc(var(--u)*2.6)/1.2 var(--f-show)}
+.board-done p{margin:0}
+
+/* ---------- вопрос ---------- */
+.qbox{flex:1;min-height:0;display:flex;flex-direction:column;gap:calc(var(--u)*1.4);overflow:auto;
+  background:linear-gradient(180deg,rgba(110,30,46,.94),rgba(66,18,30,.94));border:1px solid var(--edge);border-radius:calc(var(--u)*1.2);
+  padding:calc(var(--u)*2.2) calc(var(--u)*3)}
+.qbox.enter{animation:zoom .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes zoom{from{transform:scale(.92);opacity:0}}
+.qkick{display:flex;align-items:center;gap:calc(var(--u)*1.2);font:700 calc(var(--u)*1.5)/1 var(--f-show);text-transform:uppercase;letter-spacing:.04em;color:rgba(255,255,255,.8)}
+.qkick b{margin-left:auto;color:var(--gold);font-size:calc(var(--u)*2.8)}
+.badge{padding:.45em .8em;border-radius:4px;font-size:calc(var(--u)*1.2);letter-spacing:.14em}
+.badge.cat{background:var(--magenta)} .badge.auc{background:var(--cyan);color:#04233A} .badge.fin{background:var(--gold);color:#221900}
+.qtext{font:600 calc(var(--u)*3.3)/1.28 var(--f-body);text-wrap:balance;max-width:44ch}
+.qtext.long{font-size:calc(var(--u)*2.35);line-height:1.36;max-width:64ch;text-wrap:pretty}
+.qask{font-size:calc(var(--u)*1.5);color:var(--cyan);font-weight:600;margin-bottom:calc(var(--u)*-.6)}
+.qrow{display:flex;gap:calc(var(--u)*2.4);align-items:stretch;flex:1 0 auto}
+.answer{position:relative;flex:1;border-radius:calc(var(--u)*1);border:1.5px dashed rgba(255,255,255,.25);padding:calc(var(--u)*2) calc(var(--u)*2.4);
+  display:flex;flex-direction:column;justify-content:center;gap:calc(var(--u)*.6)}
+.answer.open{border-style:solid;border-color:var(--gold);background:rgba(255,194,26,.08)}
+.answer.pop{animation:zoom .3s ease}
+.answer.hasfig{flex-direction:row;align-items:center;justify-content:space-between;gap:calc(var(--u)*2.4)}
+.answer.hasfig .peek-l{position:absolute;top:calc(var(--u)*.6);left:calc(var(--u)*2.4)}
+.atext{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
+.answer.peek{border-color:var(--magenta);background:rgba(232,51,127,.08)}
+.peek-l{font-size:calc(var(--u)*1.1);text-transform:uppercase;letter-spacing:.12em;color:var(--magenta);font-weight:700}
+.answer .a{font:700 calc(var(--u)*2.5)/1.2 var(--f-show);color:var(--gold)}
+.answer .a.hidden-a{color:rgba(255,255,255,.35);font-size:calc(var(--u)*1.8)}
+.answer .x{font-size:calc(var(--u)*1.75);color:rgba(255,255,255,.9);max-width:60ch}
+.fig{width:calc(var(--u)*30);flex:none;height:auto}
+.fig circle{fill:rgba(255,255,255,.06);stroke:#fff;stroke-width:2}
+.fig circle.c2{fill:rgba(255,194,26,.18);stroke:var(--gold)}
+.fig .ln{stroke:#fff;stroke-width:2}
+.fig .mid{fill:rgba(255,255,255,.12)}
+.fig text{fill:#fff;font:600 14px var(--f-body);text-anchor:middle}
+.fig text.sm{font-size:13px}.fig text.xs{font-size:11.5px}.fig text.dim{fill:rgba(255,255,255,.6)}
+.quip{font-style:italic;color:var(--cyan);font-size:calc(var(--u)*1.7)}
+.ctrl{display:flex;gap:calc(var(--u)*1);align-items:center;flex-wrap:wrap}
+.who{margin-right:auto;font-size:calc(var(--u)*1.8)}
+.who b{color:var(--gold)}
+
+/* таймер */
+.timer{position:relative;width:calc(var(--u)*13);height:calc(var(--u)*13);flex:none;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.timer svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.timer .tbg{fill:rgba(14,6,10,.5);stroke:rgba(255,255,255,.15);stroke-width:6}
+.timer .tarc{fill:none;stroke:var(--gold);stroke-width:6;stroke-dasharray:289;stroke-linecap:round;transition:stroke-dashoffset .2s linear}
+.timer .tnum{position:relative;font:700 calc(var(--u)*4)/1 var(--f-show);color:#fff}
+.timer .tlab{position:relative;font-size:calc(var(--u)*1.1);text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.65)}
+.timer.low .tarc{stroke:var(--bad)} .timer.low .tnum{color:#FF9A9E}
+.timer.out{animation:shake .4s ease 2}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* спецклетки */
+.special{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*1.2);text-align:center;flex:1;font-size:calc(var(--u)*2)}
+.special p{margin:0;max-width:56ch}
+.big-word{font:700 calc(var(--u)*6.4)/1 var(--f-show);text-transform:uppercase;color:var(--gold);text-shadow:0 0 calc(var(--u)*4) rgba(255,194,26,.45),0 calc(var(--u)*.4) 0 var(--gold-d)}
+.enter .big-word{animation:zoom .5s cubic-bezier(.2,.8,.2,1)}
+.pickteam,.auc-teams{display:flex;gap:calc(var(--u)*1);flex-wrap:wrap;justify-content:center}
+.auc-form{display:flex;flex-direction:column;gap:calc(var(--u)*1.4);align-items:center}
+.auc-stake{display:flex;gap:calc(var(--u)*1);align-items:center;flex-wrap:wrap;justify-content:center}
+.auc-stake input{width:calc(var(--u)*12);padding:.5em .7em;border-radius:calc(var(--u)*.6);border:1.5px solid rgba(255,255,255,.3);background:rgba(14,6,10,.6);color:#fff;font:700 calc(var(--u)*2)/1 var(--f-show);margin-left:.5em}
+.err{color:#FF9A9E;font-size:calc(var(--u)*1.4);min-height:1.2em;margin:0;font-style:normal}
+.stakes{display:grid;grid-template-columns:repeat(4,minmax(0,calc(var(--u)*20)));gap:calc(var(--u)*1.2);text-align:left}
+.judge{display:flex;flex-direction:column;gap:calc(var(--u)*.8)}
+.jrow .btn{min-height:calc(var(--u)*3.6);padding:calc(var(--u)*.6) calc(var(--u)*1.8)}
+
+/* ---------- итоги ---------- */
+.endbox{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*1.6);text-align:center}
+.rank{list-style:none;margin:0;padding:0;width:min(100%,calc(var(--u)*70));display:flex;flex-direction:column;gap:calc(var(--u)*.8)}
+.rank li{display:flex;align-items:center;gap:calc(var(--u)*1.6);padding:calc(var(--u)*1.1) calc(var(--u)*2);border-radius:calc(var(--u)*1);
+  background:linear-gradient(180deg,var(--cell),var(--cell-2));border:1px solid var(--edge);font-size:calc(var(--u)*2.2)}
+.rank li.p1{border-color:var(--gold);box-shadow:0 0 calc(var(--u)*3) rgba(255,194,26,.35)}
+.pl{font:700 calc(var(--u)*3)/1 var(--f-show);color:var(--gold);width:1.4em}
+.rn{flex:1;text-align:left;font-weight:700}
+.rs{font:700 calc(var(--u)*2.6)/1 var(--f-show);color:var(--gold)}
+.rs.neg{color:#FF9A9E}
+.sendst{font-size:calc(var(--u)*1.4);color:rgba(255,255,255,.7);margin:0;min-height:1.2em}
+.sendst.ok{color:#7BE3AE}.sendst.bad{color:#FF9A9E}.sendst.wait{color:var(--cyan)}
+
+/* ---------- подиумы команд ---------- */
+.pods{display:grid;grid-template-columns:repeat(var(--n,4),1fr);gap:calc(var(--u)*1.2);padding:calc(var(--u)*1) calc(var(--u)*2) calc(var(--u)*1.6)}
+.pod{position:relative;border-radius:calc(var(--u)*1);padding:calc(var(--u)*1) calc(var(--u)*1.4);text-align:center;
+  background:rgba(14,6,10,.6);border:1.5px solid rgba(255,255,255,.16);transition:border-color .2s,box-shadow .2s,opacity .2s}
+.pod.turn,.pod.ans{border-color:var(--gold);box-shadow:0 0 calc(var(--u)*2.4) rgba(255,194,26,.4)}
+.pod.out{opacity:.4}
+.pn{font-weight:700;font-size:calc(var(--u)*1.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps{font:700 calc(var(--u)*3.2)/1.1 var(--f-show);color:var(--gold);font-variant-numeric:tabular-nums}
+.ps.neg{color:#FF9A9E}
+.flag{position:absolute;top:calc(var(--u)*-1.1);left:50%;transform:translateX(-50%);background:var(--gold);color:#221900;
+  font:700 calc(var(--u)*1)/1 var(--f-show);text-transform:uppercase;letter-spacing:.12em;padding:.4em .8em;border-radius:3px;white-space:nowrap}
+.adj{position:absolute;right:calc(var(--u)*.6);top:calc(var(--u)*.6);display:flex;gap:4px;opacity:0;transition:opacity .2s}
+.pod:hover .adj,.role-host .adj{opacity:1}
+.adj button{font-size:calc(var(--u)*1);padding:.25em .5em;border-radius:4px;background:rgba(255,255,255,.12)}
+
+/* ---------- пульт ведущего ---------- */
+.role-host .top{background:rgba(232,51,127,.16)}
+
+/* ---------- ответы на печать ---------- */
+.role-key{overflow:auto;background:#fff;color:var(--ink);font-size:15px}
+.role-key #app{height:auto}
+.key{max-width:820px;margin:0 auto;padding:32px 20px}
+.key h1{font:700 22px/1.2 var(--f-show);margin:0 0 6px}
+.key h2{font:700 15px/1.2 var(--f-show);text-transform:uppercase;margin:22px 0 8px;color:#1A2C9A}
+.kmeta{color:var(--dim);margin:0 0 10px}
+.key table{width:100%;border-collapse:collapse}
+.key td{border-top:1px solid #E3E6F2;padding:8px 6px;vertical-align:top;line-height:1.45}
+.key td span{color:var(--dim);font-size:13.5px}
+.kv{font:700 14px var(--f-show);color:#9A6B00;width:52px}
+.key .btn{margin-top:20px}
+@media print{.noprint{display:none!important}.key{padding:0}.key tr{break-inside:avoid}}
+
+/* узкие окна (пульт на ноутбуке, планшет) */
+@media (max-aspect-ratio:4/3){
+  .setup{grid-template-columns:repeat(2,1fr)}
+  .stakes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qrow{flex-direction:column}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* служебное */
+[hidden]{display:none!important}
+.qtext.small{font-size:calc(var(--u)*2.4)}
+.fin-row{align-items:flex-start}
+.fin-row .answer .a{font-size:calc(var(--u)*2)}
+.fin-row .answer .x{font-size:calc(var(--u)*1.5)}
+.fin-row .judge{flex:none;width:calc(var(--u)*50)}
+.jrow{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:calc(var(--u)*.8)}
+.jn{font-weight:700;font-size:calc(var(--u)*1.7);line-height:1.2;min-width:0}
+.jn small{display:block;font-weight:400;font-size:.78em;color:rgba(255,255,255,.7)}
+.fin-row .judge > .btn{align-self:flex-start;margin-top:calc(var(--u)*.6)}
+.ph-end .stage{justify-content:center}
+.endbox{gap:calc(var(--u)*1.2)}
+.endbox .big-word{font-size:calc(var(--u)*5.2)}
+.jrow.set .btn:not(.on){opacity:.3}
+.role-host .adj{position:static;justify-content:center;margin-top:calc(var(--u)*.4)}
+.qtext.compact{font-size:calc(var(--u)*1.9);line-height:1.35;max-width:80ch;color:rgba(255,255,255,.88)}
+.qtext.small{font-size:calc(var(--u)*1.75);line-height:1.35;max-width:90ch}
+.answer.open .a{font-size:calc(var(--u)*2.2)}
+.answer.open .x{font-size:calc(var(--u)*1.65)}
+.fin-row .answer .a{font-size:calc(var(--u)*1.8)}
+.fin-row .answer .x{font-size:calc(var(--u)*1.45)}
+.fin-row .judge{width:calc(var(--u)*46)}
+.qbox{gap:calc(var(--u)*1.1)}
+/* плотная раскладка для длинных рассуждений */
+.qbox{padding:calc(var(--u)*1.6) calc(var(--u)*2.6)}
+.qkick b{font-size:calc(var(--u)*2.2)}
+.qtext.long{font-size:calc(var(--u)*2.2)}
+.timer{width:calc(var(--u)*9.5);height:calc(var(--u)*9.5)}
+.timer .tnum{font-size:calc(var(--u)*3)}
+.answer{padding:calc(var(--u)*1.2) calc(var(--u)*2)}
+.answer .a.hidden-a{font-size:calc(var(--u)*1.5)}
+.ph-q .stage,.ph-final .stage{padding-top:calc(var(--u)*1);padding-bottom:calc(var(--u)*.6)}
+.ph-q .pods,.ph-final .pods{padding-top:calc(var(--u)*.6);padding-bottom:calc(var(--u)*1)}
+.ph-q .pod,.ph-final .pod{padding:calc(var(--u)*.5) calc(var(--u)*1)}
+.ph-q .ps,.ph-final .ps{font-size:calc(var(--u)*2.3)}
+.ph-q .pn,.ph-final .pn{font-size:calc(var(--u)*1.3)}
+.ph-q .top,.ph-final .top{padding-top:calc(var(--u)*.6);padding-bottom:calc(var(--u)*.6)}
+.ctrl .btn{min-height:calc(var(--u)*3.6);padding:calc(var(--u)*.7) calc(var(--u)*1.8)}
+.qtext.compact{font-size:calc(var(--u)*1.65)}
+.answer.open .a{font-size:calc(var(--u)*2)}
+.answer.open .x{font-size:calc(var(--u)*1.5)}
+.qtext.small{font-size:calc(var(--u)*1.55)}
+.fin-row .answer .x{font-size:calc(var(--u)*1.35)}
+.fin-row .jrow .btn{min-height:calc(var(--u)*3);padding:calc(var(--u)*.4) calc(var(--u)*1.4)}
+.fin-row .judge{gap:calc(var(--u)*.5)}
+
+.field.team span{display:flex;justify-content:space-between;align-items:center}
+.rm{font-size:calc(var(--u)*1);text-transform:none;letter-spacing:0;color:rgba(255,255,255,.55);text-decoration:underline;text-underline-offset:2px;padding:0}
+.rm:hover{color:#FF9A9E}
+.addteam{align-self:end;min-height:calc(var(--u)*4.4);border:1.5px dashed rgba(255,255,255,.3);border-radius:calc(var(--u)*.7);color:rgba(255,255,255,.75);font-size:calc(var(--u)*1.4)}
+.addteam:hover{border-color:var(--gold);color:var(--gold)}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ============================================================
+   «АПЕЛЛЯЦИЯ». Командная игра для проектора в формате «Своей игры».
+   Тема: способы обоснования утверждений. Аргументация, доказательство,
+   критика и опровержение. Почти в каждом рассуждении спрятан изъян,
+   иногда изъяна нет вовсе.
+   ============================================================ */
+var GAME = "Апелляция";
+var VALUES = [100, 200, 300, 400, 500];
+var TEAMS_N = 4;       // по умолчанию
+var TEAMS_MIN = 2, TEAMS_MAX = 6;
+var Q_SEC = 60;      // таймер на обычный вопрос
+var FIN_SEC = 60;    // таймер в финале
+var ASK = "Найдите изъян в рассуждении и назовите его.";
+
+var CATS = [
+ {name:"Тезис", qs:[
+  {q:"Адвокат: «Моего подзащитного обвиняют в том, что он сбил пешехода на перекрёстке. Но посмотрите на этот перекрёсток: ни светофора, ни освещения, шесть аварий за год. Город годами ничего не делал. Вот кто настоящий виновник!»",
+   a:"Подмена тезиса.",
+   x:"Вопрос был о вине водителя, а доказывается вина города. Плохой перекрёсток не исключает вины водителя: виноваты могут быть оба."},
+  {q:"Прокурор: «Подсудимая уверяет, что взяла деньги из кассы взаймы и собиралась вернуть. Но мы выяснили: три месяца назад она заняла у коллеги и до сих пор не отдала. Человеку, который не возвращает долги, верить нельзя».",
+   a:"Подмена тезиса доводом к личности.",
+   x:"Доказать нужно умысел в этом эпизоде, а обсуждается характер подсудимой. Из невозвращённого долга коллеге не следует, что деньги из кассы взяты с умыслом на хищение."},
+  {q:"Защита: «Свидетель Ершов не мог разглядеть лицо нападавшего: всё произошло около десяти вечера, а в октябре в это время уже темно. Значит, суд вообще не может принимать показания очевидцев о вечерних событиях в октябре».",
+   a:"Доказывается слишком много.",
+   x:"Из одного случая выведено общее правило. Если бы оно было верно, пришлось бы отбросить любые вечерние показания, даже под фонарём. Кто доказывает слишком много, тот ничего не доказывает."},
+  {q:"Защита: «Мы докажем, что Карпов не знал о поддельности векселя. Карпов — опытный бухгалтер, тридцать лет в профессии, ни одного нарекания. Он сам принёс вексель в банк, назвал свою фамилию и не скрывался. Так не ведёт себя человек, который хочет обмануть. Следовательно, Карпов действовал без корыстного умысла».",
+   a:"Потеря тезиса: обещали доказать незнание, а вывели отсутствие корысти.",
+   x:"Это разные утверждения: можно знать о подделке и не искать выгоды. Вдобавок довод об опыте работает против тезиса: опытный бухгалтер скорее заметил бы подделку."},
+  {q:"Прокурор: «Обвинение утверждает, что Лапин организовал хищение бюджетных средств. Доказано: Лапин подписал платёжные поручения, лично знал получателя и получил от него двести тысяч рублей. Следовательно, Лапин причастен к хищению».",
+   a:"Доказан более слабый тезис, чем заявлен.",
+   x:"Заявлено «организовал», доказано «причастен». Причастен и рядовой исполнитель, а организатор — особая роль, её нужно доказывать отдельно."}
+ ]},
+ {name:"Аргументы", qs:[
+  {q:"Ответчик: «Договор поставки не может считаться заключённым: на нём нет моей подписи, а без подписей обеих сторон на одном документе договор не заключается».",
+   a:"Ложный аргумент.",
+   x:"Договор можно заключить и обменом письмами, и принятием оферты действиями: например, оплатой или отгрузкой товара (ГК РФ, ст. 434 и 438). Аргумент, на котором держится вывод, неверен."},
+  {q:"Защита: «Мой подзащитный не мог ударить потерпевшего: в тот вечер он был на даче за сорок километров от города. К тому же потерпевший сам начал драку, а подзащитный лишь оборонялся».",
+   a:"Аргументы противоречат друг другу.",
+   x:"Если подзащитный был на даче, он не мог обороняться в драке. Если оборонялся, алиби ложно. Защита сама подрывает обе линии."},
+  {q:"Следователь: «Нож, найденный у подъезда, — орудие убийства. На рукоятке нашли отпечатки Глебова. Следовательно, убийца — Глебов».",
+   a:"Недоказанный аргумент (предвосхищение основания).",
+   x:"То, что найденный нож и есть орудие убийства, само нуждается в доказательстве. Да и отпечатки на ноже говорят лишь о том, что Глебов его брал, но не когда и зачем."},
+  {q:"Истец: «Подпись на расписке выполнена не Сомовым. Эксперт сравнил её с подписью в паспорте Сомова, выданном пятнадцать лет назад, и нашёл существенные различия».",
+   a:"Недостаточный аргумент: скрытое допущение, что подпись не меняется.",
+   x:"За пятнадцать лет подпись меняется. Для вывода нужны свежие образцы того же времени, что и расписка."},
+  {q:"Представитель компании: «Главный бухгалтер с тридцатилетним стажем подтвердил под присягой, что сделка законна. Мнение профессионала такого уровня можно считать установленным фактом».",
+   a:"Довод к авторитету вне его компетенции.",
+   x:"Законность сделки — вопрос права, его решает суд, а не бухгалтер. Мнение, даже опытного специалиста, не превращается в факт."}
+ ]},
+ {name:"Демонстрация", qs:[
+  {q:"Следователь: «Камера зафиксировала: Бойко вошёл в подъезд в 21:40, а в 21:55 у жильцов третьего этажа пропал велосипед. Очевидно, велосипед взял Бойко».",
+   a:"«После этого — значит вследствие этого».",
+   x:"Из того, что одно событие произошло раньше другого, не следует, что оно его причина. За 15 минут в подъезд мог войти кто угодно ещё."},
+  {q:"Защита: «Подсудимый ранее не судим. По статистике, подавляющее большинство квартирных краж совершают ранее судимые. Следовательно, подсудимый этой кражи не совершал».",
+   a:"От вероятного к достоверному.",
+   x:"«Большинство» ничего не говорит о конкретном человеке. Вероятностный довод подан как решающий."},
+  {q:"Защита: «Закон разрешает применять силу, защищаясь от нападения. Шилов применил силу. Следовательно, Шилов действовал законно».",
+   a:"Сказанное с условием принято как безусловное.",
+   x:"Закон разрешает силу только при необходимой обороне и в её пределах. Было ли нападение и не превышены ли пределы — не доказано. Это ещё и силлогизм с нераспределённым средним термином."},
+  {q:"Защита: «Каждый из пяти участников сделки действовал строго в пределах своих полномочий: директор, бухгалтер, юрист, нотариус, кассир. Следовательно, сделка в целом законна».",
+   a:"От свойств частей к свойству целого.",
+   x:"Законность действий каждого по отдельности не гарантирует законности всей схемы. Мошенничество можно разложить на шаги, каждый из которых формально законен."},
+  {q:"Эксперт: «Если бы Ткаченко находился в квартире в момент пожара, на его одежде остались бы следы копоти. Экспертиза обнаружила копоть на его куртке. Следовательно, в момент пожара Ткаченко был в квартире».",
+   a:"Утверждение следствия.",
+   x:"Копоть могла появиться иначе: например, он пришёл после пожара или помогал тушить. Из истинности следствия не следует истинность основания."}
+ ]},
+ {name:"Косвенное доказательство", qs:[
+  {q:"Ревизор: «Деньги из сейфа исчезли: либо их украли, либо их забрал сам директор. Следов взлома нет. Значит, деньги забрал директор».",
+   a:"Неполный перечень вариантов, и первый вариант не исключён.",
+   x:"Ключ мог быть у других, деньги могли быть не внесены в сейф по ошибке учёта. А кражу можно совершить и без взлома — ключом."},
+  {q:"Прокурор: «Докажем, что Пахомов виновен. Допустим обратное: что Пахомов — образцовый законопослушный гражданин. Но у него два штрафа за превышение скорости. Значит, допущение ложно, и Пахомов виновен».",
+   a:"Неверно выбран антитезис.",
+   x:"Тезису «виновен» противоречит «невиновен», а не «образцовый гражданин». Опровергнув более сильное утверждение, тезис не докажешь: можно быть и невиновным, и не образцовым."},
+  {q:"Следователь: «Кошелёк могли взять только трое, кто был в кабинете: Иванов, Петров или Сидорова. У Иванова алиби: он был на совещании, это подтверждают пять человек. Петрова в момент кражи видели у окна, а не у стола. Значит, кошелёк взяла Сидорова».",
+   a:"Не все варианты исключены.",
+   x:"Петров не исключён: от окна до стола несколько шагов. Вдобавок «только трое» никак не обосновано: перечень вариантов может быть неполным."},
+  {q:"Кредитор: «Предположим, Белова не знала о долгах фирмы. Тогда она не стала бы за месяц до банкротства переоформлять квартиру на сестру. Но она переоформила. Значит, допущение ложно: Белова знала о долгах».",
+   a:"Следствие из допущения не доказано.",
+   x:"Всё держится на «тогда она не стала бы». Квартиру могли переоформить по другим причинам: продажа, подарок, семейные обстоятельства. Противоречия с фактами не получилось."},
+  {q:"Пожарный дознаватель: «Пожар возник из-за неисправной проводки, непотушенной сигареты или поджога. Экспертиза исключила проводку. Окурков на месте не найдено. Значит, это поджог».",
+   a:"Вариант с сигаретой не исключён, а перечень неполон.",
+   x:"Окурок мог сгореть в том самом пожаре: отсутствие следа ничего не доказывает. И причин может быть больше трёх: обогреватель, свечи, бытовая техника."}
+ ]},
+ {name:"Критика", qs:[
+  {q:"Адвокат: «Обвинение строилось на показаниях соседки, но суд признал их недопустимым доказательством. Таким образом, позиция обвинения опровергнута: подсудимый невиновен».",
+   a:"Опровергнут аргумент, а не тезис.",
+   x:"Отпавший аргумент делает тезис недоказанным, но не ложным. По закону недоказанная вина означает оправдание, но логически ложность тезиса из этого не следует."},
+  {q:"Прокурор: «Защита ссылается на показания матери подсудимого. Но мать всегда будет выгораживать сына, следовательно, её показания ложны».",
+   a:"Критика источника выдана за опровержение.",
+   x:"Заинтересованность свидетеля — повод проверить показания особенно тщательно, но не доказательство их ложности."},
+  {q:"Прокурор: «Защита утверждает, что видеозапись не доказывает присутствие подсудимого, раз его лица на ней не видно. Но если согласиться, придётся отказаться от всех доказательств, где не видно лица: от отпечатков пальцев, следов обуви, анализа ДНК. Это абсурд, значит, позиция защиты несостоятельна».",
+   a:"Неправильное приведение к абсурду: опровергнут искажённый тезис.",
+   x:"Защита говорила о конкретной записи, по которой нельзя опознать человека. Абсурдное следствие выведено из другого, расширенного тезиса, которого защита не выдвигала."},
+  {q:"Ответчик: «Истец утверждает, что узнал о нарушении своих прав только в 2024 году, поэтому срок давности не пропущен. Но если бы он узнал о нарушении только в 2024 году, то не мог бы ещё в 2021 году направить нам претензию именно по этому нарушению. А претензия 2021 года лежит в деле. Следовательно, утверждение истца ложно».",
+   a:"Изъяна нет.",
+   x:"Это правильное опровержение тезиса через ложное следствие: из тезиса истца следует, что претензии 2021 года быть не могло, а она есть. Ловушка — для тех, кто ищет ошибку везде."},
+  {q:"Директор завода: «Прокурор упрекает нас в нарушении правил техники безопасности. Но в прошлом году прокуратура не провела на заводе ни одной проверки! О каком нарушении после этого может идти речь?»",
+   a:"Подмена тезиса: «а сами-то».",
+   x:"Бездействие проверяющих не отменяет нарушения. Критика переведена с тезиса оппонента на самого оппонента."}
+ ]},
+ {name:"Разбор", qs:[
+  {ask:"Назовите тезис, аргументы и вид доказательства (прямое или косвенное).",
+   q:"«Подсудимый не мог совершить кражу в 14:00 в Челябинске: в 13:30 он вылетел рейсом в Москву, это подтверждают посадочный талон и записи камер аэропорта».",
+   a:"Тезис: подсудимого не было на месте кражи. Аргументы: вылет в 13:30, посадочный талон, записи камер. Доказательство прямое.",
+   x:"Тезис выводится прямо из аргументов, без допущения противного."},
+  {ask:"Какое допущение здесь скрыто?",
+   q:"Эксперт: «Расписка составлена не раньше 2020 года: в ней указан ИНН организации, а этот ИНН организация получила только в 2020 году».",
+   a:"Что весь текст расписки написан в одно время, ИНН не дописали позже.",
+   x:"Если ИНН вписали потом, дата составления расписки может быть любой. Вывод держится на этом неназванном допущении."},
+  {ask:"Это прямое или косвенное доказательство? Есть ли в нём изъян?",
+   q:"«Завещание составлено не в 2015 году. Допустим, оно составлено в 2015-м. Тогда в нём не мог бы упоминаться внук наследодателя, родившийся в 2018 году. Но внук в завещании упомянут. Значит, завещание составлено не в 2015 году».",
+   a:"Косвенное доказательство от противного. Изъяна нет.",
+   x:"Допускается антитезис, из него выводится следствие, противоречащее факту, антитезис отбрасывается — тезис доказан."},
+  {ask:"Какие допущения скрыты в этом рассуждении?",
+   q:"Защита: «Сорокин вышел из гостиницы „Урал“ в 23:10, это видно на камере у выхода. До дома потерпевшей — 25 минут на машине. Значит, раньше 23:35 Сорокин у дома потерпевшей быть не мог».",
+   a:"Что время на камере точное и что у гостиницы нет других выходов.",
+   x:"Засчитывается любое из них. Если часы камеры спешат или есть служебный выход, расчёт защиты рушится."},
+  {q:"Следователь: «Ключ-карты от номера 405 были только у двух человек: у постояльца и у горничной. По журналу замка в 03:12 дверь открыли картой горничной. Горничная Котова в ту ночь была в больнице, а её карта лежала на стойке администратора. Значит, дверь открыл кто-то, кто взял карту со стойки, — не горничная и не постоялец».",
+   a:"Постоялец не исключён.",
+   x:"Ничто в рассуждении не мешает самому постояльцу взять карту горничной со стойки. Вывод «не постоялец» не обоснован."}
+ ]}
+];
+
+/* Кот в мешке: вопросы из прошлых тем. */
+var CAT_QS = [
+ {theme:"Законы логики",
+  q:"Свидетель на первом допросе сказал, что машина была красная, а на втором — «скорее тёмная, бордовая или вишнёвая». Адвокат: «Показания противоречат друг другу, значит, оба ложны». Где изъян?",
+  a:"Противоречия нет, а если бы и было, ложным было бы лишь одно из показаний.",
+  x:"Бордовый — оттенок красного, второе показание лишь уточняет первое. И из двух противоречащих суждений одно обязательно истинно."},
+ {theme:"Силлогизм",
+  q:"«Все, кто был в квартире в момент кражи, оставили следы обуви в прихожей. В прихожей найдены следы обуви Лунина. Значит, Лунин был в квартире в момент кражи». Где изъян?",
+  a:"Средний термин не распределён.",
+  x:"Следы мог оставить и тот, кто был в квартире в другое время. Из «все воры оставили следы» не следует «все, кто оставил следы, — воры»."},
+ {theme:"Индукция",
+  q:"«Проверили 40 из 200 договоров фирмы — все 40 оформлены с нарушениями. Следовательно, все 200 договоров оформлены с нарушениями». Где изъян?",
+  a:"Неполная индукция: вывод лишь вероятный.",
+  x:"Проверена пятая часть, и неизвестно, как её отбирали. Возможно, проверяющие взяли самые подозрительные договоры."}
+];
+
+var FINAL = {
+ theme:"Доказательство",
+ q:"«Если бы Голубев 12 мая был в Москве, его телефон зарегистрировался бы в московской сети. В распечатке оператора за 12 мая — только челябинские базовые станции. Значит, 12 мая Голубев в Москве не был. Значит, подписать договор в московском офисе он не мог. Следовательно, подпись на договоре поддельная». Найдите изъян.",
+ a:"Последний шаг не следует: договор могли подписать в другом месте или в другой день.",
+ x:"Из «не был в московском офисе 12 мая» не следует подделка подписи. Засчитывается и скрытое допущение: что телефон был при Голубеве и включён."
+};
+
+var QUIPS = {
+ hello:["Команды, тридцать рассуждений и финал. Почти в каждом спрятан изъян. Почти."],
+ ok:["Верно.","Засчитано.","Правильно."],
+ bad:["Неверно.","Не засчитано."],
+ none:["Никто не ответил. Открываем ответ."],
+ cat:"Кот в мешке! Команда обязана отдать вопрос другой команде.",
+ auction:"Аукцион!",
+ final:"Ставки пишутся на листке."
+};
+
+/* ============================================================
+   «СВОЯ ЛОГИКА» — движок. Одна страница, три режима:
+   #        — экран для проектора;
+   #host    — пульт ведущего (ответы видны всегда);
+   Окна на одном компьютере синхронизируются через localStorage.
+   ============================================================ */
+var G_URL = "https://script.google.com/macros/s/AKfycbz20ybgl-VjmUEvs-Xv1_217_E6rIaHKvf8jIWEZkEY-i6CFblypmI-xSXilsvMa--bFQ/exec";
+var ST_KEY = "apellyaciya_v1";
+var ROLE = /host/.test(location.hash) ? "host" : "screen";
+var S = null;
+var SOUND = true;
+try { SOUND = localStorage.getItem("apell_mute") !== "1"; } catch (e) {}
+
+/* ---------- утилиты ---------- */
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+function rnd(n) { return Math.floor(Math.random() * n); }
+function pick(a) { return a[rnd(a.length)]; }
+function rid(n) { var A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s = ""; for (var i = 0; i < n; i++) s += A[rnd(A.length)]; return s; }
+function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = rnd(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function fmt(n) { n = Math.round(n); var s = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); return (n < 0 ? "−" : "") + s; }
+function key(c, r) { return c + "-" + r; }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+function fresh() {
+  var names = [];
+  for (var i = 0; i < TEAMS_N; i++) names.push({ n: "Команда " + (i + 1), s: 0 });
+  return { v: 1, phase: "setup", group: "", teams: names, turn: 0, used: {}, special: {}, catOf: {},
+    cur: null, fin: null, gid: rid(8), sent: 0, hist: [], quip: pick(QUIPS.hello) };
+}
+function load() {
+  try { var raw = localStorage.getItem(ST_KEY); if (raw) { var o = JSON.parse(raw); if (o && o.v === 1) { S = o; return; } } } catch (e) {}
+  S = fresh();
+}
+function save() { try { localStorage.setItem(ST_KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* Каждое действие ведущего — через act(): снимок для «Отменить», сохранение, перерисовка. */
+function act(fn, noHist) {
+  if (!noHist) {
+    var snap = clone(S); snap.hist = [];
+    S.hist.push(JSON.stringify(snap));
+    if (S.hist.length > 40) S.hist.shift();
+  }
+  fn();
+  save(); render();
+}
+function undo() {
+  if (!S.hist.length) return;
+  var h = S.hist.slice(0, -1), prev = JSON.parse(S.hist[S.hist.length - 1]);
+  prev.hist = h; S = prev; save(); render();
+}
+
+/* ---------- звук: короткие синтезаторные джинглы ---------- */
+var AC = null;
+function tone(seq) {
+  if (!SOUND || ROLE !== "screen") return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    var t = AC.currentTime + 0.02;
+    seq.forEach(function (s) {
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = s[3] || "square"; o.frequency.value = s[0];
+      g.gain.setValueAtTime(0.0001, t + s[1]);
+      g.gain.exponentialRampToValueAtTime(0.09, t + s[1] + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + s[1] + s[2]);
+      o.connect(g); g.connect(AC.destination); o.start(t + s[1]); o.stop(t + s[1] + s[2] + 0.05);
+    });
+  } catch (e) {}
+}
+var SND = {
+  ok: [[523, 0, .12], [659, .1, .12], [784, .2, .12], [1047, .3, .35]],
+  bad: [[196, 0, .25, "sawtooth"], [147, .22, .45, "sawtooth"]],
+  open: [[392, 0, .08], [523, .07, .08], [659, .14, .2]],
+  cat: [[784, 0, .1], [622, .1, .1], [784, .2, .1], [622, .3, .1], [1047, .42, .3]],
+  end: [[880, 0, .5, "triangle"]],
+  fin: [[523, 0, .2], [659, .2, .2], [784, .4, .2], [1047, .6, .6]]
+};
+
+/* ---------- круги Эйлера ---------- */
+function fig(f) {
+  if (!f) return "";
+  var t = f[0], W = 360, H = 190, s = '<svg class="fig" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Круги Эйлера">';
+  function circ(cx, cy, r, cls) { return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" class="' + (cls || "") + '"/>'; }
+  function txt(x, y, v, cls) { return '<text x="' + x + '" y="' + y + '" class="' + (cls || "") + '">' + esc(v) + '</text>'; }
+  if (t === "in") {
+    s += circ(180, 95, 88, "c1") + circ(180, 112, 44, "c2") + txt(180, 36, f[1]) + txt(180, 117, f[2], "sm");
+  } else if (t === "cross") {
+    s += circ(140, 95, 78, "c1") + circ(220, 95, 78, "c2") + txt(105, 100, f[1]) + txt(255, 100, f[2]);
+  } else if (t === "coord") {
+    s += circ(180, 95, 90, "c1") + circ(140, 112, 36, "c2") + circ(220, 112, 36, "c2") +
+      txt(180, 38, f[1]) + txt(140, 117, f[2], "sm") + txt(220, 117, f[3], "sm");
+  } else if (t === "contra") {
+    s += circ(180, 95, 88, "c1") + '<line x1="180" y1="7" x2="180" y2="183" class="ln"/>' +
+      txt(135, 100, f[1], "sm") + txt(225, 100, f[2], "sm");
+  } else if (t === "contrary") {
+    s += circ(180, 95, 88, "c1") + '<line x1="148" y1="12" x2="148" y2="178" class="ln"/><line x1="212" y1="12" x2="212" y2="178" class="ln"/>' +
+      '<rect x="148" y="7" width="64" height="176" class="mid" clip-path="url(#cl)"/>' +
+      '<clipPath id="cl"><circle cx="180" cy="95" r="88"/></clipPath>' +
+      txt(118, 92, "небольшой", "xs") + txt(118, 108, "тяжести", "xs") + txt(180, 100, "третьи", "xs dim") +
+      txt(242, 92, "особо", "xs") + txt(242, 108, "тяжкие", "xs");
+  }
+  return s + "</svg>";
+}
+
+/* ---------- запуск игры ---------- */
+function grabSetup() {
+  for (var i = 0; i < S.teams.length; i++) { var el = $("tn" + i); if (el) S.teams[i].n = el.value.slice(0, 24); }
+  if ($("grp")) S.group = $("grp").value;
+}
+function startGame() {
+  var nm = [];
+  for (var i = 0; i < S.teams.length; i++) { var el = $("tn" + i); nm.push((el && el.value.trim()) || ("Команда " + (i + 1))); }
+  var gr = ($("grp") && $("grp").value.trim()) || "";
+  act(function () {
+    S.group = gr;
+    S.teams = nm.map(function (n) { return { n: n.slice(0, 24), s: 0 }; });
+    // Две клетки «кот в мешке» и один аукцион — в разных темах, не на 100.
+    var cols = shuffle(CATS.map(function (_, i) { return i; })).slice(0, 3), cq = shuffle([0, 1, 2]);
+    S.special = {}; S.catOf = {};
+    cols.forEach(function (c, i) {
+      var k = key(c, 1 + rnd(4));
+      S.special[k] = i < 2 ? "cat" : "auc";
+      if (i < 2) S.catOf[k] = cq[i];
+    });
+    S.used = {}; S.turn = 0; S.cur = null; S.fin = null; S.sent = 0; S.gid = rid(8);
+    S.phase = "board";
+  });
+}
+
+function openCell(c, r) {
+  var k = key(c, r);
+  if (S.used[k] || S.phase !== "board") return;
+  var kind = S.special[k] || "norm";
+  act(function () {
+    S.cur = { c: c, r: r, kind: kind, step: kind === "norm" ? "ask" : "intro", team: S.turn, tried: [],
+      stake: VALUES[r], done: false, reveal: false, res: null, t0: null, quip: "" };
+    S.phase = "q";
+  });
+  tone(kind === "norm" ? SND.open : SND.cat);
+}
+function curQ() {
+  var c = S.cur; if (!c) return null;
+  if (c.kind === "cat") { var q = CAT_QS[S.catOf[key(c.c, c.r)]]; return { q: q.q, a: q.a, x: q.x, theme: q.theme, ask: "Ответьте на вопрос." }; }
+  var o = CATS[c.c].qs[c.r]; return { q: o.q, a: o.a, x: o.x, fig: o.fig, ask: o.ask, theme: CATS[c.c].name };
+}
+function nextTeam() {
+  var c = S.cur;
+  for (var i = 1; i <= S.teams.length; i++) { var t = (c.team + i) % S.teams.length; if (c.tried.indexOf(t) < 0) return t; }
+  return -1;
+}
+function judge(kind) {
+  var c = S.cur; if (!c || c.done) return;
+  act(function () {
+    var v = c.kind === "auc" ? c.stake : VALUES[c.r], t = c.team;
+    if (kind === "ok") {
+      S.teams[t].s += v; c.done = true; c.reveal = true; c.res = { t: t, ok: true, v: v }; c.quip = pick(QUIPS.ok);
+    } else {
+      if (kind === "bad") S.teams[t].s -= v;
+      c.tried.push(t);
+      c.quip = kind === "bad" ? pick(QUIPS.bad) : "Команда «" + S.teams[t].n + "» пасует.";
+      var nx = c.kind === "norm" ? nextTeam() : -1;
+      if (nx < 0) { c.done = true; c.reveal = true; c.res = { t: t, ok: false, v: v }; if (c.kind === "norm") c.quip += " " + pick(QUIPS.none); }
+      else { c.team = nx; c.t0 = null; }
+    }
+  });
+  tone(kind === "ok" ? SND.ok : (kind === "bad" ? SND.bad : SND.end));
+}
+function closeQ() {
+  act(function () {
+    var c = S.cur;
+    S.used[key(c.c, c.r)] = 1;
+    S.turn = (S.turn + 1) % S.teams.length;
+    S.cur = null; S.phase = "board";
+  });
+}
+function allUsed() { return Object.keys(S.used).length >= CATS.length * VALUES.length; }
+
+/* ---------- финал ---------- */
+function toFinal() {
+  act(function () {
+    S.cur = null; S.phase = "final";
+    var st = [], ok = [];
+    for (var i = 0; i < S.teams.length; i++) { st.push(null); ok.push(null); }
+    S.fin = { step: "stakes", st: st, ok: ok, t0: null };
+  });
+  tone(SND.fin);
+}
+function inFinal(i) { return S.teams[i].s > 0; }
+function finStakesOk() {
+  var any = false;
+  for (var i = 0; i < S.teams.length; i++) if (inFinal(i)) {
+    any = true; var v = S.fin.st[i];
+    if (v == null || isNaN(v) || v < 0 || v > S.teams[i].s) return false;
+  }
+  return any;
+}
+function finSetStake(i, val) {
+  var v = parseInt(String(val).replace(/\D/g, ""), 10);
+  S.fin.st[i] = isNaN(v) ? null : v; save();
+  var b = $("finGo"); if (b) b.disabled = !finStakesOk();
+  var e = $("fe" + i); if (e) e.textContent = (S.fin.st[i] != null && S.fin.st[i] > S.teams[i].s) ? "больше счёта" : "";
+}
+function finApply() {
+  act(function () {
+    for (var i = 0; i < S.teams.length; i++) if (inFinal(i) && S.fin.ok[i] != null) S.teams[i].s += S.fin.ok[i] ? S.fin.st[i] : -S.fin.st[i];
+    S.fin.step = "done"; S.phase = "end"; S.sent = 0;
+  });
+  tone(SND.fin);
+  sendResult();
+}
+function skipFinal() { act(function () { S.phase = "end"; S.sent = 0; }); sendResult(); }
+
+function ranking() {
+  var a = S.teams.map(function (t, i) { return { n: t.n, s: t.s, i: i }; });
+  a.sort(function (x, y) { return y.s - x.s; });
+  var place = 0, last = null;
+  a.forEach(function (t, j) { if (t.s !== last) { place = j + 1; last = t.s; } t.p = place; });
+  return a;
+}
+
+/* ---------- отправка в Google-таблицу ---------- */
+var sendTimer = null;
+function sendResult() {
+  if (ROLE !== "screen" || !G_URL || S.phase !== "end" || S.sent === 2) return;
+  S.sent = 1; save(); paintSend();
+  var body = JSON.stringify({ work: "svoya", gid: S.gid, group: (S.group ? S.group + " · " : "") + GAME,
+    teams: ranking().map(function (t) { return { name: t.n, score: t.s, place: t.p }; }) });
+  try {
+    var x = new XMLHttpRequest();
+    x.open("POST", G_URL, true);
+    x.setRequestHeader("Content-Type", "text/plain;charset=utf-8");
+    x.timeout = 20000;
+    x.onload = function () {
+      var ok = false; try { ok = JSON.parse(x.responseText).ok === true; } catch (e) {}
+      S.sent = ok ? 2 : -1; save(); paintSend(); if (!ok) retryLater();
+    };
+    x.onerror = x.ontimeout = function () { S.sent = -1; save(); paintSend(); retryLater(); };
+    x.send(body);
+  } catch (e) { S.sent = -1; save(); paintSend(); retryLater(); }
+}
+function retryLater() { clearTimeout(sendTimer); sendTimer = setTimeout(sendResult, 25000); }
+function paintSend() {
+  var el = $("sendSt"); if (!el) return;
+  var m = { "0": ["", ""], "1": ["Отправляем итоги в таблицу…", "wait"], "2": ["Итоги записаны в Google-таблицу.", "ok"], "-1": ["Нет связи с таблицей. Повторим автоматически.", "bad"] };
+  if (!G_URL) { el.className = "sendst"; el.textContent = "Таблица не подключена: итоги остаются на экране."; return; }
+  var v = m[String(S.sent)] || m["0"];
+  el.className = "sendst " + v[1]; el.textContent = v[0];
+  var b = $("sendBtn"); if (b) b.hidden = S.sent !== -1;
+}
+
+/* ---------- таймер ---------- */
+function timeLeft(t0, sec) { if (!t0) return null; return Math.max(0, sec - (Date.now() - t0) / 1000); }
+var beeped = {};
+function tick() {
+  var el = $("timer"); if (!el) return;
+  var t0 = +el.getAttribute("data-t0"), sec = +el.getAttribute("data-sec");
+  var left = timeLeft(t0, sec);
+  if (left == null) return;
+  var p = left / sec;
+  el.querySelector(".tnum").textContent = Math.ceil(left);
+  el.querySelector(".tarc").style.strokeDashoffset = String(289 * (1 - p));
+  el.className = "timer run" + (left <= 5 ? " low" : "") + (left <= 0 ? " out" : "");
+  if (left <= 0 && !beeped[t0]) { beeped[t0] = 1; tone(SND.end); }
+}
+function timerHtml(t0, sec) {
+  return '<button class="timer' + (t0 ? " run" : "") + '" id="timer" data-a="timer" data-t0="' + (t0 || 0) + '" data-sec="' + sec + '" title="Запустить таймер">' +
+    '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="tbg"/><circle cx="50" cy="50" r="46" class="tarc" style="stroke-dashoffset:0"/></svg>' +
+    '<span class="tnum">' + (t0 ? "" : sec) + '</span><span class="tlab">' + (t0 ? "сек" : "старт") + '</span></button>';
+}
+
+/* ---------- отрисовка ---------- */
+var ANIM = { q: null, rev: null };
+function render() {
+  document.body.className = "role-" + ROLE + " ph-" + S.phase;
+  var h;
+  if (S.phase === "setup") h = setupHtml();
+  else {
+    h = topHtml() + '<main class="stage">';
+    if (S.phase === "board") h += boardHtml();
+    else if (S.phase === "q") h += qHtml();
+    else if (S.phase === "final") h += finalHtml();
+    else h += endHtml();
+    h += '</main>' + (S.phase === "end" ? '' : podiumHtml());
+  }
+  $("app").innerHTML = h;
+  tick(); paintSend();
+}
+
+function setupHtml() {
+  var h = '<div class="cover"><div class="onair">Заседание открыто</div><h1 class="logo-big">' + esc(GAME) + '</h1>' +
+    '<p class="tag">' + esc(S.quip) + '</p>' +
+    '<div class="setup">' +
+    '<label class="field wide"><span>Группа</span><input id="grp" maxlength="20" placeholder="например, СП-201" value="' + esc(S.group) + '"></label>';
+  for (var i = 0; i < S.teams.length; i++)
+    h += '<label class="field team"><span>Команда ' + (i + 1) +
+      (S.teams.length > TEAMS_MIN ? '<button class="rm" data-a="rmteam" data-i="' + i + '" title="Убрать команду">Убрать</button>' : '') +
+      '</span><input id="tn' + i + '" maxlength="24" value="' + esc(S.teams[i].n) + '"></label>';
+  if (S.teams.length < TEAMS_MAX) h += '<button class="field addteam" data-a="addteam">+ Добавить команду</button>';
+  h += '</div><button class="btn gold big" data-a="start">Начать игру</button>' +
+    '<div class="setup-links">' +
+    '<button class="lnk" data-a="host">Открыть пульт ведущего в отдельном окне</button>' +
+    '</div>' +
+    '<details class="rules"><summary>Правила для команд</summary><ul>' +
+    '<li>Команды выбирают вопрос по очереди. Первой отвечает выбравшая команда.</li>' +
+    '<li>Верно — плюс стоимость вопроса. Неверно — минус, и вопрос переходит следующей команде. Можно спасовать без штрафа.</li>' +
+    '<li><b>Кот в мешке</b> — вопрос из другой темы. Команда обязана отдать его соперникам.</li>' +
+    '<li><b>Аукцион</b> — команды торгуются. Ответ приносит или отнимает сумму ставки.</li>' +
+    '<li><b>Финал</b> — играют команды с плюсовым счётом. Ставка от нуля до всего счёта.</li></ul></details>' +
+    '</div>';
+  return h;
+}
+
+function topHtml() {
+  return '<header class="top"><div class="brand">' + esc(GAME) + (S.group ? '<small>' + esc(S.group) + '</small>' : '') + '</div>' +
+    '<div class="tools">' +
+    (ROLE === "screen" ? '<button class="tool" data-a="host" title="Пульт ведущего">Пульт</button>' : '<span class="hostmark">Пульт ведущего</span>') +
+    '<button class="tool" data-a="undo"' + (S.hist.length ? '' : ' disabled') + '>Отменить</button>' +
+    (S.phase === "board" || S.phase === "q" ? '<button class="tool" data-a="final">Финал</button>' : '') +
+    (ROLE === "screen" ? '<button class="tool" data-a="mute">' + (SOUND ? "Звук вкл" : "Звук выкл") + '</button>' : '') +
+    '<button class="tool" data-a="newgame">Новая игра</button>' +
+    '</div></header>';
+}
+
+function podiumHtml() {
+  var h = '<footer class="pods" style="--n:' + S.teams.length + '">', ans = S.phase === "q" && S.cur && !S.cur.done ? S.cur.team : -1;
+  for (var i = 0; i < S.teams.length; i++) {
+    var cls = "pod";
+    if (S.phase === "board" && i === S.turn) cls += " turn";
+    if (i === ans) cls += " ans";
+    if (S.cur && S.cur.tried.indexOf(i) >= 0 && !S.cur.done) cls += " out";
+    h += '<div class="' + cls + '"><div class="pn">' + esc(S.teams[i].n) + '</div>' +
+      '<div class="ps' + (S.teams[i].s < 0 ? " neg" : "") + '">' + fmt(S.teams[i].s) + '</div>' +
+      '<div class="adj"><button data-a="adj" data-i="' + i + '" data-d="-100" title="Поправить счёт">−100</button><button data-a="adj" data-i="' + i + '" data-d="100" title="Поправить счёт">+100</button></div>' +
+      (S.phase === "board" && i === S.turn ? '<div class="flag">выбирает</div>' : '') +
+      (i === ans ? '<div class="flag">отвечает</div>' : '') + '</div>';
+  }
+  return h + '</footer>';
+}
+
+function boardHtml() {
+  var h = '<div class="board" style="--cols:' + CATS.length + '">';
+  CATS.forEach(function (c) { h += '<div class="bh">' + esc(c.name) + '</div>'; });
+  for (var r = 0; r < VALUES.length; r++)
+    for (var c = 0; c < CATS.length; c++) {
+      var u = S.used[key(c, r)];
+      h += u ? '<div class="cell used"></div>' :
+        '<button class="cell" data-a="cell" data-c="' + c + '" data-r="' + r + '">' + VALUES[r] + '</button>';
+    }
+  h += '</div>';
+  if (allUsed()) h += '<div class="board-done"><p>Все вопросы сыграны.</p><button class="btn gold big" data-a="final">Переходим к финалу</button></div>';
+  return h;
+}
+
+function teamBtns(action, except) {
+  var h = '<div class="pickteam">';
+  for (var i = 0; i < S.teams.length; i++) if (i !== except)
+    h += '<button class="btn plate" data-a="' + action + '" data-i="' + i + '">' + esc(S.teams[i].n) + '</button>';
+  return h + '</div>';
+}
+
+function qHtml() {
+  var c = S.cur, q = curQ(), v = VALUES[c.r], host = ROLE === "host";
+  var badge = c.kind === "cat" ? '<span class="badge cat">Кот в мешке</span>' : (c.kind === "auc" ? '<span class="badge auc">Аукцион</span>' : '');
+  var qk = c.c + "-" + c.r + "-" + c.step, enter = ANIM.q !== qk, revNow = c.reveal && ANIM.rev !== qk;
+  ANIM.q = qk; if (c.reveal) ANIM.rev = qk;
+  var h = '<section class="qbox' + (enter ? " enter" : "") + '">';
+  h += '<div class="qkick">' + badge + '<span>' + esc(q.theme) + '</span><b>' + (c.kind === "auc" && c.step === "ask" ? fmt(c.stake) : v) + '</b></div>';
+
+  if (c.step === "intro" && c.kind === "cat") {
+    h += '<div class="special"><div class="big-word">Кот в мешке!</div>' +
+      '<p>Тема вопроса: <b>' + esc(q.theme) + '</b>. Стоимость: <b>' + v + '</b>.</p>' +
+      '<p>Команда «' + esc(S.teams[S.turn].n) + '» отдаёт вопрос. Кому?</p>' + teamBtns("catto", S.turn) + '</div>';
+    return h + '</section>';
+  }
+  if (c.step === "intro" && c.kind === "auc") {
+    h += '<div class="special"><div class="big-word">Аукцион!</div>' +
+      '<p>Тема: <b>' + esc(q.theme) + '</b>. Начальная ставка — <b>' + v + '</b>. Можно пойти ва-банк, если на счету больше.</p>' +
+      '<div class="auc-form"><div class="auc-teams">';
+    for (var i = 0; i < S.teams.length; i++)
+      h += '<button class="btn plate' + (c.team === i ? " on" : "") + '" data-a="aucteam" data-i="' + i + '">' + esc(S.teams[i].n) + '<small>' + fmt(S.teams[i].s) + '</small></button>';
+    var mx = Math.max(v, S.teams[c.team].s);
+    h += '</div><div class="auc-stake"><label>Ставка <input id="aucSt" type="number" inputmode="numeric" min="' + v + '" max="' + mx + '" step="100" value="' + c.stake + '"></label>' +
+      '<button class="btn plate" data-a="vabank">Ва-банк (' + fmt(mx) + ')</button>' +
+      '<button class="btn gold" data-a="aucgo">Играет «' + esc(S.teams[c.team].n) + '»</button></div>' +
+      '<p class="err" id="aucErr"></p></div></div>';
+    return h + '</section>';
+  }
+
+  h += '<div class="qask">' + esc(q.ask || ASK) + '</div><div class="qtext' + (q.q.length > 110 ? ' long' : '') + (c.reveal ? ' compact' : '') + '">' + esc(q.q) + '</div>';
+  var showA = c.reveal || host;
+  h += '<div class="qrow">' + (c.done ? '' : timerHtml(c.t0, Q_SEC)) +
+    '<div class="answer' + (q.fig && showA ? " hasfig" : "") + (c.reveal ? " open" : "") + (revNow ? " pop" : "") + (host && !c.reveal ? " peek" : "") + '">' +
+    (showA ? (host && !c.reveal ? '<div class="peek-l">Ответ видите только вы</div>' : '') +
+      '<div class="atext"><div class="a">' + esc(q.a) + '</div><div class="x">' + esc(q.x) + '</div></div>' + (q.fig ? fig(q.fig) : '')
+      : '<div class="a hidden-a">Ответ скрыт</div>') + '</div></div>';
+
+  if (c.quip) h += '<div class="quip">' + esc(c.quip) + '</div>';
+
+  h += '<div class="ctrl">';
+  if (!c.done) {
+    h += '<div class="who">Отвечает: <b>' + esc(S.teams[c.team].n) + '</b>' +
+      (c.kind === "auc" ? ' · ставка ' + fmt(c.stake) : '') + '</div>' +
+      '<button class="btn ok" data-a="ok">Верно</button><button class="btn bad" data-a="bad">Неверно</button>' +
+      (c.kind === "norm" ? '<button class="btn plate" data-a="pass">Пас</button>' : '') +
+      (!c.reveal ? '<button class="btn ghost" data-a="reveal">Показать ответ</button>' : '');
+  } else {
+    h += '<div class="who">' + (c.res && c.res.ok ? '«' + esc(S.teams[c.res.t].n) + '» получает ' + fmt(c.res.v) : 'Вопрос сыгран') + '</div>' +
+      '<button class="btn gold" data-a="close">К табло</button>';
+  }
+  h += '</div></section>';
+  return h;
+}
+
+function finalHtml() {
+  var f = S.fin, host = ROLE === "host", fk = "fin-" + f.step, enter = ANIM.q !== fk;
+  ANIM.q = fk;
+  var h = '<section class="qbox final' + (enter ? " enter" : "") + '">';
+  h += '<div class="qkick"><span class="badge fin">Финал</span><span>' + esc(FINAL.theme) + '</span></div>';
+  var parts = []; for (var i = 0; i < S.teams.length; i++) if (inFinal(i)) parts.push(i);
+  if (!parts.length) {
+    h += '<div class="special"><div class="big-word">Финал отменяется</div><p>Ни у одной команды нет плюсового счёта. Подводим итоги так.</p>' +
+      '<button class="btn gold big" data-a="skipfin">К итогам</button></div>';
+    return h + '</section>';
+  }
+  if (f.step === "stakes") {
+    h += '<div class="special"><div class="big-word">Финал</div><p>Тема: <b>' + esc(FINAL.theme) + '</b>. ' + esc(QUIPS.final) +
+      ' Ставка — от 0 до всего счёта. Ведущий вводит ставки, на экране они скрыты.</p><div class="stakes">';
+    parts.forEach(function (i) {
+      h += '<label class="field"><span>' + esc(S.teams[i].n) + ' · до ' + fmt(S.teams[i].s) + '</span>' +
+        '<input data-st="' + i + '" type="' + (host ? "number" : "password") + '" inputmode="numeric" autocomplete="off" value="' + (f.st[i] == null ? "" : f.st[i]) + '">' +
+        '<em class="err" id="fe' + i + '"></em></label>';
+    });
+    h += '</div><button class="btn gold big" id="finGo" data-a="finask"' + (finStakesOk() ? '' : ' disabled') + '>Показать вопрос</button></div>';
+    return h + '</section>';
+  }
+  var rev = f.step === "judge";
+  h += '<div class="qtext long' + (rev ? ' small' : '') + '">' + esc(FINAL.q) + '</div>';
+  h += '<div class="qrow">' + (rev ? '' : timerHtml(f.t0, FIN_SEC)) +
+    '<div class="answer' + (rev ? " open" : "") + (host && !rev ? " peek" : "") + '">' +
+    (rev || host ? (host && !rev ? '<div class="peek-l">Ответ видите только вы</div>' : '') + '<div class="a">' + esc(FINAL.a) + '</div><div class="x">' + esc(FINAL.x) + '</div>'
+      : '<div class="a hidden-a">Команды пишут ответ на листке</div>') + '</div></div>';
+  if (!rev) {
+    h += '<div class="ctrl"><button class="btn gold" data-a="finreveal">Открыть ответ</button></div>';
+  } else {
+    h = h.replace('<div class="qrow">', '<div class="qrow fin-row">');
+    h += '<div class="judge">';
+    parts.forEach(function (i) {
+      var o = f.ok[i];
+      h += '<div class="jrow' + (o != null ? ' set' : '') + '"><span class="jn">' + esc(S.teams[i].n) + '<small>ставка ' + fmt(f.st[i]) + '</small></span>' +
+        '<button class="btn ok' + (o === true ? " on" : "") + '" data-a="fok" data-i="' + i + '">Верно</button>' +
+        '<button class="btn bad' + (o === false ? " on" : "") + '" data-a="fbad" data-i="' + i + '">Неверно</button></div>';
+    });
+    var ready = parts.every(function (i) { return f.ok[i] != null; });
+    h += '<button class="btn gold big" data-a="finapply"' + (ready ? '' : ' disabled') + '>Подвести итоги</button></div>';
+    // судейство — справа от ответа, в одной строке
+    h = h.replace(/<\/div><\/div><div class="judge">/, '</div><div class="judge">') + '</div>';
+  }
+  return h + '</section>';
+}
+
+function endHtml() {
+  var r = ranking(), h = '<section class="endbox"><div class="big-word">Итоги игры</div><ol class="rank">';
+  r.forEach(function (t) {
+    h += '<li class="p' + t.p + '"><span class="pl">' + t.p + '</span><span class="rn">' + esc(t.n) + '</span><span class="rs' + (t.s < 0 ? " neg" : "") + '">' + fmt(t.s) + '</span></li>';
+  });
+  h += '</ol><p class="quip">Спасибо командам!</p>' +
+    '<p id="sendSt" class="sendst"></p><button class="btn plate" id="sendBtn" data-a="send" hidden>Отправить ещё раз</button></section>';
+  return h;
+}
+
+/* ---------- события ---------- */
+document.addEventListener("click", function (e) {
+  var b = e.target.closest ? e.target.closest("[data-a]") : null;
+  if (!b || b.disabled) return;
+  var a = b.getAttribute("data-a"), i = +b.getAttribute("data-i");
+  if (a === "start") startGame();
+  else if (a === "addteam") { grabSetup(); if (S.teams.length < TEAMS_MAX) S.teams.push({ n: "Команда " + (S.teams.length + 1), s: 0 }); save(); render(); }
+  else if (a === "rmteam") { e.preventDefault(); grabSetup(); if (S.teams.length > TEAMS_MIN) S.teams.splice(i, 1); S.teams.forEach(function (t, j) { if (/^Команда \d+$/.test(t.n)) t.n = "Команда " + (j + 1); }); save(); render(); }
+  else if (a === "host") window.open(location.href.split("#")[0] + "#host", "apell_host", "width=1100,height=800");
+  else if (a === "cell") openCell(+b.getAttribute("data-c"), +b.getAttribute("data-r"));
+  else if (a === "ok") judge("ok");
+  else if (a === "bad") judge("bad");
+  else if (a === "pass") judge("pass");
+  else if (a === "reveal") act(function () { S.cur.reveal = true; });
+  else if (a === "close") closeQ();
+  else if (a === "timer") {
+    if (S.phase === "q" && !S.cur.t0) act(function () { S.cur.t0 = Date.now(); }, true);
+    else if (S.phase === "final" && !S.fin.t0) act(function () { S.fin.t0 = Date.now(); }, true);
+  }
+  else if (a === "catto") act(function () { S.cur.team = i; S.cur.step = "ask"; S.cur.quip = "Вопрос получает команда «" + S.teams[i].n + "»."; });
+  else if (a === "aucteam") act(function () { S.cur.team = i; S.cur.stake = VALUES[S.cur.r]; }, true);
+  else if (a === "vabank") { var inp = $("aucSt"); if (inp) inp.value = Math.max(VALUES[S.cur.r], S.teams[S.cur.team].s); }
+  else if (a === "aucgo") {
+    var v = parseInt(($("aucSt") || {}).value, 10), mn = VALUES[S.cur.r], mx = Math.max(mn, S.teams[S.cur.team].s);
+    if (isNaN(v) || v < mn || v > mx) { $("aucErr").textContent = "Ставка — от " + mn + " до " + fmt(mx) + "."; return; }
+    act(function () { S.cur.stake = v; S.cur.step = "ask"; S.cur.quip = "Продано! Команда «" + S.teams[S.cur.team].n + "» играет на " + fmt(v) + "."; });
+  }
+  else if (a === "final") { if (S.phase === "q" && S.cur && !S.cur.done) return; toFinal(); }
+  else if (a === "finask") { if (finStakesOk()) act(function () { S.fin.step = "ask"; S.fin.t0 = null; }); }
+  else if (a === "finreveal") act(function () { S.fin.step = "judge"; });
+  else if (a === "fok" || a === "fbad") act(function () { S.fin.ok[i] = a === "fok"; }, true);
+  else if (a === "finapply") finApply();
+  else if (a === "skipfin") skipFinal();
+  else if (a === "send") sendResult();
+  else if (a === "undo") undo();
+  else if (a === "adj") act(function () { S.teams[i].s += +b.getAttribute("data-d"); });
+  else if (a === "mute") { SOUND = !SOUND; try { localStorage.setItem("apell_mute", SOUND ? "0" : "1"); } catch (er) {} render(); }
+  else if (a === "newgame") {
+    if (b.getAttribute("data-armed") !== "1") {
+      b.setAttribute("data-armed", "1"); b.textContent = "Точно? Ещё раз";
+      setTimeout(function () { b.removeAttribute("data-armed"); b.textContent = "Новая игра"; }, 4000);
+      return;
+    }
+    var keep = S.teams.map(function (t) { return t.n; }), g = S.group;
+    S = fresh(); S.group = g; S.teams = keep.map(function (n) { return { n: n, s: 0 }; }); save(); render();
+  }
+});
+document.addEventListener("input", function (e) {
+  var t = e.target;
+  if (t.hasAttribute && t.hasAttribute("data-st")) finSetStake(+t.getAttribute("data-st"), t.value);
+});
+/* Второе окно (пульт) — перерисовываемся при изменениях, не трогая поле, в котором печатают. */
+window.addEventListener("storage", function (e) {
+  if (e.key !== ST_KEY || !e.newValue) return;
+  var prev = S;
+  try { S = JSON.parse(e.newValue); } catch (er) { return; }
+  soundDiff(prev, S);
+  var ae = document.activeElement;
+  if (ae && ae.hasAttribute && ae.hasAttribute("data-st") && S.phase === "final" && S.fin && S.fin.step === "stakes") return;
+  render();
+  if (S.phase === "end" && S.sent !== 2) sendResult();
+});
+/* Экран проектора озвучивает действия, сделанные в пульте. */
+function soundDiff(a, b) {
+  if (!a || !b) return;
+  if (a.phase !== "q" && b.phase === "q") { tone(b.cur && b.cur.kind !== "norm" ? SND.cat : SND.open); return; }
+  if (a.phase !== "final" && b.phase === "final") { tone(SND.fin); return; }
+  if (a.phase !== "end" && b.phase === "end") { tone(SND.fin); return; }
+  if (b.phase === "q" && a.cur && b.cur) {
+    var up = false, down = false;
+    for (var i = 0; i < b.teams.length; i++) { if (b.teams[i].s > a.teams[i].s) up = true; if (b.teams[i].s < a.teams[i].s) down = true; }
+    if (up) tone(SND.ok); else if (down) tone(SND.bad);
+  }
+}
+window.addEventListener("hashchange", function () { location.reload(); });
+window.addEventListener("online", function () { if (S.phase === "end" && S.sent !== 2) sendResult(); });
+setInterval(tick, 200);
+
+load(); render();
+if (S.phase === "end" && S.sent !== 2) sendResult();
+
+</script>
+</body>
+</html>
