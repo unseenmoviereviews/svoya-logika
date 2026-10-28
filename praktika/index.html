@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Практика · Логика</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Lora:wght@600&display=swap" rel="stylesheet">
+<style>
+/* Спокойная «тетрадная» страница: бумага, чернила, бордовый акцент. Сначала телефон. */
+:root{
+  --paper:#F6F3EE; --card:#FFFFFF; --ink:#1E1B18; --dim:#6B645C; --rule:#E4DED5;
+  --acc:#8A2433; --acc-soft:#F4E6E8; --ok:#1E7A4C; --ok-soft:#E3F2EA; --bad:#B4372F; --bad-soft:#FBE9E7;
+  --f:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --fh:"Lora",Georgia,"Times New Roman",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#16130F; --card:#1F1B17; --ink:#EDE7DF; --dim:#A59C91; --rule:#38312A;
+  --acc:#E07A88; --acc-soft:#3A2227; --ok:#5CC48E; --ok-soft:#1C3328; --bad:#F08A80; --bad-soft:#3A2220; color-scheme:dark;}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 var(--f);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px 48px}
+.kicker{margin:0 0 4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--acc);font-weight:600}
+h1{font:600 clamp(34px,9vw,52px)/1.05 var(--fh);margin:0 0 12px;letter-spacing:-.01em}
+h1.ttl{font-size:clamp(26px,7vw,36px);margin-bottom:20px}
+.hero{max-width:720px;margin:0 auto;padding:40px 16px 8px}
+.lead{margin:0 0 20px;color:var(--dim);max-width:52ch}
+.meter{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--dim)}
+.bar{height:6px;background:var(--rule);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc);border-radius:3px;transition:width .3s}
+h2.src{font:600 13px/1.4 var(--f);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:32px 0 10px}
+.list{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.list li+li{border-top:1px solid var(--rule)}
+.row{display:flex;align-items:center;gap:14px;padding:14px 16px;text-decoration:none;min-height:56px}
+.row:hover{background:var(--acc-soft)}
+.num{font:600 14px/1 var(--f);color:var(--dim);font-variant-numeric:tabular-nums;width:22px}
+.rt{flex:1;font-weight:500}
+.rt small{display:block;font-weight:400;font-size:13px;color:var(--dim);margin-top:2px}
+.mark{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--dim)}
+.row.ok .mark{color:var(--ok)} .row.part .mark{color:var(--bad)}
+.row.ok .num,.row.part .num{color:var(--acc)}
+.foot{margin-top:28px;font-size:13px;color:var(--dim)}
+.lnk{text-decoration:underline;text-underline-offset:2px;color:var(--acc)}
+
+.bar-top{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;max-width:720px;margin:0 auto;
+  padding:12px 16px;background:color-mix(in srgb,var(--paper) 92%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-size:14px;color:var(--dim)}
+.back{text-decoration:none;color:var(--acc);font-weight:600}
+.wrap>.kicker{margin-top:12px}
+.step{display:flex;gap:14px;margin:0 0 28px}
+.sn{flex:none;width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;margin-top:2px}
+.step.locked .sn{background:var(--rule);color:var(--dim)}
+.sb{flex:1;min-width:0}
+.sb h2{font:600 18px/1.3 var(--f);margin:2px 0 12px}
+video{display:block;width:100%;aspect-ratio:16/9;background:#000;border-radius:10px}
+.q{border:0;margin:0 0 20px;padding:0}
+.q legend{font-weight:600;margin-bottom:10px;padding:0}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:8px;background:var(--card);border:1.5px solid var(--rule);border-radius:10px;cursor:pointer;line-height:1.4}
+.opt input{margin:3px 0 0;accent-color:var(--acc);flex:none;width:18px;height:18px}
+.opt:has(input:checked){border-color:var(--acc);background:var(--acc-soft)}
+.opt.right,.opt.right:has(input:checked){border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong,.opt.wrong:has(input:checked){border-color:var(--bad);background:var(--bad-soft)}
+.opt.dim{opacity:.55}
+.opt.right,.opt.wrong,.opt.dim{cursor:default}
+.expl{margin:4px 0 0;padding:12px 14px;border-left:3px solid var(--acc);background:var(--card);border-radius:0 10px 10px 0;font-size:15px}
+.res{margin:0;font-size:15px}
+.err{color:var(--bad);font-size:14px;min-height:20px;margin:0 0 6px}
+.hint{color:var(--dim);margin:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 22px;border-radius:10px;background:var(--acc);color:#fff;font-weight:600;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--acc);border:1.5px solid var(--acc)}
+.pager{display:flex;justify-content:space-between;gap:12px;margin-top:8px}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+@media (max-width:420px){.step{gap:10px}.sn{width:24px;height:24px;font-size:13px}}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* Практика: фрагмент → вопросы → разбор.
+   Видео 1 — «Как инста-конспирологи прикрываются наукой», видео 2 — «Новый разбор самых нелепых теорий из тик-тока»
+   (канал «Когнитивный надзор»). Клипы лежат рядом: video/NNa.mp4 — фрагмент, video/NNb.mp4 — разбор. */
+var SOURCES = [
+  "Видео 1. «Как инста-конспирологи прикрываются наукой»",
+  "Видео 2. «Новый разбор самых нелепых теорий из тик-тока»"
+];
+var ITEMS = [
+ {src:0, title:"Цивилизации всего 200 лет: архитектура", kind:"Ложный аргумент",
+  qs:[
+   {q:"Какой довод в пользу «цивилизации 200 лет» приводит автор ролика первым?",
+    o:["Сейчас не умеют строить здания, подобные старинным","В старинных зданиях нашли современные материалы","О старинных зданиях нет никаких документов","Все старинные здания построены по одному проекту"], a:0},
+   {q:"Что не так с этим доводом?",
+    o:["Он ложен: из того, что так массово не строят, выведено, что не умеют","Он верен, но не относится к тезису","Это круг в доказательстве","Изъяна нет, довод убедителен"], a:0,
+    x:"Чтобы довод работал, нужно доказать «не умеют», а не «не строят массово». Вдобавок тезис принят до доказательств: «теория, в которую я максимально верю, — сейчас приведу три доказательства»."}
+  ]},
+ {src:0, title:"Ядерные воронки на снимках", kind:"Недоказанный аргумент",
+  qs:[
+   {q:"На что опирается вывод о древней ядерной катастрофе?",
+    o:["На спутниковые снимки круглых образований, названных воронками","На повышенную радиацию в этих местах","На рассекреченные документы","На рассказы местных жителей"], a:0},
+   {q:"Главный изъян этого аргумента?",
+    o:["Не доказано, что это воронки: «может быть воронкой» превратилось в «это воронка»","Подмена тезиса: говорили о катастрофе, доказали другое","Довод к личности учёных","Аргументы противоречат друг другу"], a:0,
+    x:"Круглое озеро может быть кратером метеорита, природным образованием или котлованом. Аргумент сам нуждается в доказательстве, а его выдают за готовый факт."}
+  ]},
+ {src:0, title:"Пустые города на старых фото", kind:"Вывод не следует",
+  qs:[
+   {q:"Что, по мысли автора ролика, доказывают старые фото пустых городов?",
+    o:["Что нас «заселили» в готовые чужие города","Что в старину людей было очень мало","Что все старые фото — подделка","Что люди прятались от катастрофы"], a:0},
+   {q:"Почему вывод не обоснован?",
+    o:["Тезис из отсутствия людей на фото не следует, а у пустых улиц есть простые объяснения","Фотографии вообще не могут быть аргументом","Тезис доказан, но слабее заявленного","Нераспределён средний термин силлогизма"], a:0,
+    x:"Длинная выдержка «стирала» движущихся прохожих, улицы снимали рано утром, фото ретушировали. И есть множество снимков того же времени, полных людей, — их просто не показали."}
+  ]},
+ {src:0, title:"Аура «научным методом»", kind:"Противоречие в аргументации",
+  qs:[
+   {q:"Какое противоречие в словах автора ролика?",
+    o:["Метод назван научным, но «наука его никогда не признает»","Ауру видно, но её нельзя описать словами","Открытие сделано впервые, но о нём все знают","Аура есть у всех, но видят её единицы"], a:0},
+   {q:"Чего не хватает, чтобы метод можно было назвать научным?",
+    o:["Воспроизводимости: другие исследователи должны получить тот же результат","Авторитета самого исследователя","Большого числа зрителей","Сложной терминологии"], a:0,
+    x:"Научность определяется не словом «научный», а проверяемостью. Если результат никто, кроме автора, повторить не может, это не научный метод."}
+  ]},
+ {src:0, title:"Почему наука «не признает» ауру", kind:"Довод к мотивам противника",
+  qs:[
+   {q:"Как автор ролика объясняет, почему наука не признает ауру?",
+    o:["Если признают, люди научатся управлять реальностью — значит, признавать «невыгодно»","Для ауры пока нет точных приборов","Учёные ещё не успели проверить открытие","Аура слишком слабая, чтобы её измерить"], a:0},
+   {q:"Как называется такой ход?",
+    o:["Вместо доказательства — рассуждение о том, почему противники «не захотят» поверить","Разделительное доказательство","Приведение к абсурду","Неполная индукция"], a:0,
+    x:"Мотивы противников ничего не говорят об истинности тезиса. Сначала нужно показать, как открытие доказано, — этого в ролике нет."}
+  ]},
+ {src:0, title:"«Системе нужны рабы»", kind:"Довод к чувствам",
+  qs:[
+   {q:"На что рассчитана фраза «системе нужны рабы, которые не верят в себя»?",
+    o:["На чувство уязвлённости и желание быть особенным","На логику и проверку фактов","На авторитет учёных","На статистику"], a:0},
+   {q:"Что в итоге доказано про ауру?",
+    o:["Ничего: звучат только утверждения без аргументов","Что ауру видят только избранные","Что её можно сфотографировать","Что наука её скрывает"], a:0,
+    x:"Эмоциональный нажим заменяет доказательство: зрителю предлагают выбрать между «рабом» и «свободным человеком», а не проверить тезис."}
+  ]},
+ {src:0, title:"Мы живём в симуляции?", kind:"Совпадение вместо доказательства",
+  qs:[
+   {q:"Что приводится как «косвенное подтверждение» симуляции?",
+    o:["Подумал о чём-то — и соцсеть сама показала ролик на эту тему","Учёные нашли в природе программный код","В мире повторяются одинаковые события","Физики не могут объяснить квантовые эффекты"], a:0},
+   {q:"В чём изъян?",
+    o:["Совпадение принято за доказательство, а другие объяснения не рассмотрены","Это довод к авторитету","Учетверение терминов","Доказан более слабый тезис"], a:0,
+    x:"Внимание цепляется за то, о чём мы недавно узнали; у мысли и рекомендации может быть общая причина; а тысячи случаев, когда совпадения не было, мы не замечаем."}
+  ]},
+ {src:0, title:"Космонавты и вращение Земли", kind:"Соломенное чучело",
+  qs:[
+   {q:"Что автор ролика выставляет «доказательством» космонавтики, а затем высмеивает?",
+    o:["Одну сомнительную видеозапись","Показания всех космонавтов","Расчёты орбит спутников","Учебник физики"], a:0},
+   {q:"Как называется этот приём?",
+    o:["«Соломенное чучело»: опровергается слабый довод, на котором оппоненты свою позицию не строят","Круг в доказательстве","«После этого — значит вследствие»","Довод к жалости"], a:0,
+    x:"Даже если запись постановочная, от этого не рушатся ни космонавтика, ни физика. Плюс в ролике есть и ложный физический аргумент: корабль не «отстаёт» от Земли, он движется вместе с ней."}
+  ]},
+ {src:0, title:"Земля — «картошка»", kind:"Подмена тезиса",
+  qs:[
+   {q:"Какое утверждение учёных якобы опровергнуто?",
+    o:["Что Земля — идеальный гладкий шар","Что Земля шарообразна","Что Земля вращается","Что у Земли есть гравитация"], a:0},
+   {q:"В чём ошибка?",
+    o:["Тезис оппонента подменён: «шарообразная» не значит «идеальный шар»","Аргумент ложен: NASA такой модели не публиковало","Ошибки нет, вывод верен","Аргументы противоречат друг другу"], a:0,
+    x:"Наука и не утверждала, что Земля — гладкий шар: её форма — геоид, сплюснутый и неровный. Опровергнуто то, чего никто не говорил."}
+  ]},
+ {src:0, title:"Женщина «стирает небо»", kind:"«После этого — значит вследствие»",
+  qs:[
+   {q:"Какую связь видит героиня ролика?",
+    o:["Она направляет свет — и на видео меняется небо, значит, это её сила","Небо меняется из-за погоды","Её снимает чужая камера","Небо меняется в определённые дни"], a:0},
+   {q:"Какая ошибка здесь главная?",
+    o:["Последовательность событий принята за причину; объяснение через работу камеры и возражения проигнорированы","Подмена тезиса","Ложная дилемма","Доказательство от противного"], a:0,
+    x:"Изменение кадра объясняется экспозицией камеры. Под роликами десятки таких объяснений, но героиня их не рассматривает."}
+  ]},
+ {src:1, title:"Слово «медикамент»", kind:"Ложный аргумент",
+  qs:[
+   {q:"Как в ролике «обосновывается», что лекарства опасны?",
+    o:["Слово «медикамент» режут на части и «переводят» с латыни: «они убьют меня», «лги мне»","Ссылкой на исследования о вреде лекарств","Рассказом о побочных эффектах","Ссылкой на мнение врача"], a:0},
+   {q:"Как автор разбора показывает несостоятельность приёма?",
+    o:["Применяет тот же приём к нику блогерши и получает нелепость — приведение к абсурду","Приводит статистику","Цитирует словарь латыни","Ссылается на мнение лингвистов"], a:0,
+    x:"Если резать слова где угодно и переводить кусками, «доказать» можно что угодно — «Радугада» тоже превращается в «радовать гадов». Метод, дающий абсурд, ничего не доказывает."}
+  ]},
+ {src:1, title:"Игрушка «Ты где / Это не я»", kind:"Совпадение принято за причину",
+  qs:[
+   {q:"Почему героиня уверена, что совет «сонастроиться с реальностью» сработал?",
+    o:["Сразу после совета она услышала другую фразу","Так сказали в видео учёные","Это подтвердили её друзья","Она повторила опыт сто раз"], a:0},
+   {q:"В чём ошибка?",
+    o:["Совпадение во времени принято за причину, а первое же объяснение — за истину","Довод к авторитету","Ложный аргумент о свойствах игрушки","Учетверение терминов"], a:0,
+    x:"Что мы слышим в неоднозначном звуке, зависит от ожиданий — это давно изучено. «Совпало во времени» ещё не значит «связано»."}
+  ]},
+ {src:1, title:"Эффект Манделы", kind:"Раздутый пример",
+  qs:[
+   {q:"Каким примером пугают зрителя?",
+    o:["Жену всегда звали Машей, а все вокруг уверяют, что она Галя","У Микки Мауса появилась точка на пятке","В песне поменялось одно слово","На карте сместилась граница страны"], a:0},
+   {q:"Что не так с этим примером?",
+    o:["Эффект касается мелочей, а пример раздут до несопоставимого масштаба — неправомерное обобщение","Пример верный, ошибки нет","Это довод к авторитету","Круг в доказательстве"], a:0,
+    x:"Ложные воспоминания бывают о мелких деталях — чёрточке, слове в песне. Перенести их на имя жены и пугаться уже этого — значит спорить с собственным преувеличением."}
+  ]},
+ {src:1, title:"«Услышал то, что хотел»", kind:"Вывод не следует",
+  qs:[
+   {q:"Какой вывод делается из того, что можно «услышать заказанную фразу»?",
+    o:["Что вы уже в другой ветке реальности и формируете настоящее","Что у игрушки два записанных звука","Что видео смонтировано","Что слух у всех разный"], a:0},
+   {q:"Что не так с выводом?",
+    o:["Он не следует из факта и ничем не подкреплён, а у факта есть простое объяснение","Он верен, но плохо сформулирован","Это доказательство от противного","Это довод к жалости"], a:0,
+    x:"Всё до «веток реальности» верно: неоднозначный звук слышат по-разному. Но «почему именно ветки реальности?» — на это аргументов нет вообще."}
+  ]},
+ {src:1, title:"«Дом твоей души»", kind:"Недоказанное основание",
+  qs:[
+   {q:"На чём держится рассказ о пропорциях миров и «доме души»?",
+    o:["На «ведической концепции», принятой как данность","На астрономических наблюдениях","На опросе слушателей","На научных статьях"], a:0},
+   {q:"Где здесь изъян?",
+    o:["Цепочка внутри логична, но её основание не доказано — его подают как само собой разумеющееся","Ложная аналогия","Довод к личности","Вывод противоречит посылкам"], a:0,
+    x:"Это предвосхищение основания: все выводы опираются на посылку, которую никто не доказывал. Обсуждать начинают детали, и спорная основа незаметно становится «очевидной»."}
+  ]},
+ {src:1, title:"Переход из 3D в 5D", kind:"Непроверяемое утверждение",
+  qs:[
+   {q:"Что обещают зрителю?",
+    o:["Переход в мир «высоких вибраций» и блаженства уже в этой жизни","Посмертное воздаяние","Конкретное событие в назначенный день","Выигрыш в лотерею"], a:0},
+   {q:"Почему такое утверждение нельзя опровергнуть и чем это плохо?",
+    o:["При любом исходе найдётся объяснение, поэтому утверждение ничего не утверждает","Его нельзя опровергнуть, потому что оно истинно","Оно опирается на науку","Его подтверждают свидетели"], a:0,
+    x:"«Мир не стал лучше? Значит, другие перешли в 5D, а ты завис» — на любой результат готов ответ. То, что нельзя проверить ни при каком исходе, не может считаться доказанным."}
+  ]},
+ {src:1, title:"День без гравитации", kind:"Ссылка на слухи и довод к страху",
+  qs:[
+   {q:"На что ссылается автор ролика?",
+    o:["«По некоторым данным» и на слухи о «засекреченном документе НАСА»","На официальное заявление НАСА","На расчёты физиков","На прошлый подобный случай"], a:0},
+   {q:"Какая здесь ошибка?",
+    o:["Неназванный и непроверяемый источник плюс давление на страх: «фейк, но предупреждён — значит вооружён»","Подмена тезиса","Приведение к абсурду","Ошибки нет, это шутка"], a:0,
+    x:"Автор ролика сама признаёт, что это фейк, и всё равно советует запастись карабинами. Аргумент заменён тревогой."}
+  ]}
+];
+
+/* Практика · Логика. Список фрагментов → фрагмент → вопросы → разбор.
+   Ответы и прогресс хранятся в этом браузере (localStorage). */
+var KEY = "praktika_logika_v1";
+var ST = { ans: {}, seen: {} };   // ans[n] = [выбранный вариант (индекс в исходном списке)…], seen[n] = открыл разбор
+try { var raw = localStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && o.ans) ST = o; } } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(ST)); } catch (e) {} }
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
+function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+/* Порядок вариантов перемешан, но одинаково при каждой загрузке. */
+function order(n, qi, len) {
+  var x = (n + 1) * 2654435761 ^ (qi + 1) * 40503;
+  function rnd() { x |= 0; x = x + 0x6D2B79F5 | 0; var t = Math.imul(x ^ x >>> 15, 1 | x); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+  var a = []; for (var i = 0; i < len; i++) a.push(i);
+  for (var j = len - 1; j > 0; j--) { var k = Math.floor(rnd() * (j + 1)); var t2 = a[j]; a[j] = a[k]; a[k] = t2; }
+  return a;
+}
+function done(n) { return !!ST.ans[n]; }
+function score(n) { var a = ST.ans[n]; if (!a) return 0; return ITEMS[n].qs.reduce(function (s, q, i) { return s + (a[i] === q.a ? 1 : 0); }, 0); }
+function total() { var s = 0, m = 0; ITEMS.forEach(function (it, n) { m += it.qs.length; s += score(n); }); return [s, m]; }
+
+/* ---------- список ---------- */
+function home() {
+  var t = total(), cnt = ITEMS.filter(function (_, n) { return done(n); }).length;
+  var h = '<header class="hero"><p class="kicker">Практика</p><h1>Логика</h1>' +
+    '<p class="lead">Посмотрите фрагмент ролика, ответьте на вопросы, затем откройте разбор. Ищите, где рассуждение ломается: тезис, аргументы или связь между ними.</p>' +
+    '<div class="meter"><div class="bar"><i style="width:' + Math.round(cnt / ITEMS.length * 100) + '%"></i></div>' +
+    '<span>Пройдено ' + cnt + ' из ' + ITEMS.length + ' · верных ответов ' + t[0] + ' из ' + t[1] + '</span></div></header><main class="wrap">';
+  SOURCES.forEach(function (src, si) {
+    h += '<h2 class="src">' + esc(src) + '</h2><ol class="list">';
+    ITEMS.forEach(function (it, n) {
+      if (it.src !== si) return;
+      var st = done(n) ? (score(n) === it.qs.length ? "ok" : "part") : "";
+      h += '<li><a class="row ' + st + '" href="#/' + (n + 1) + '"><span class="num">' + pad(n + 1) + '</span>' +
+        '<span class="rt">' + esc(it.title) + (done(n) ? '<small>' + esc(it.kind) + '</small>' : '') + '</span>' +
+        '<span class="mark">' + (done(n) ? score(n) + '/' + it.qs.length : '') + '</span></a></li>';
+    });
+    h += '</ol>';
+  });
+  h += '<p class="foot">Фрагменты — из роликов канала «Когнитивный надзор». Ответы сохраняются только в этом браузере.' +
+    (cnt ? ' <button class="lnk" data-a="reset">Начать заново</button>' : '') + '</p></main>';
+  return h;
+}
+
+/* ---------- фрагмент ---------- */
+function item(n) {
+  var it = ITEMS[n], a = ST.ans[n], checked = !!a;
+  var h = '<nav class="bar-top"><a href="#/" class="back">← Все фрагменты</a><span>' + pad(n + 1) + ' / ' + ITEMS.length + '</span></nav><main class="wrap">';
+  h += '<p class="kicker">' + esc(SOURCES[it.src].replace(/\..*/, "")) + ' · фрагмент ' + pad(n + 1) + '</p><h1 class="ttl">' + esc(it.title) + '</h1>';
+  h += '<section class="step"><div class="sn">1</div><div class="sb"><h2>Смотрите фрагмент</h2>' +
+    '<video src="video/' + pad(n + 1) + 'a.mp4" controls playsinline preload="metadata"></video></div></section>';
+  h += '<section class="step"><div class="sn">2</div><div class="sb"><h2>Ответьте на вопросы</h2>';
+  it.qs.forEach(function (q, qi) {
+    h += '<fieldset class="q"><legend>' + esc(q.q) + '</legend>';
+    order(n, qi, q.o.length).forEach(function (oi) {
+      var cls = "opt";
+      if (checked) { if (oi === q.a) cls += " right"; else if (a[qi] === oi) cls += " wrong"; else cls += " dim"; }
+      h += '<label class="' + cls + '"><input type="radio" name="q' + qi + '" value="' + oi + '"' + (checked ? ' disabled' : '') +
+        (checked && a[qi] === oi ? ' checked' : '') + '><span>' + esc(q.o[oi]) + '</span></label>';
+    });
+    if (checked && q.x) h += '<p class="expl">' + esc(q.x) + '</p>';
+    h += '</fieldset>';
+  });
+  if (!checked) h += '<p class="err" id="err"></p><button class="btn" data-a="check">Проверить</button>';
+  else h += '<p class="res">' + (score(n) === it.qs.length ? 'Всё верно.' : 'Верно ' + score(n) + ' из ' + it.qs.length + '.') +
+    ' Ошибка в ролике: <b>' + esc(it.kind) + '</b>.</p>';
+  h += '</div></section>';
+  h += '<section class="step' + (checked ? '' : ' locked') + '"><div class="sn">3</div><div class="sb"><h2>Разбор</h2>' +
+    (checked ? '<video src="video/' + pad(n + 1) + 'b.mp4" controls playsinline preload="metadata" id="vb"></video>'
+      : '<p class="hint">Откроется после проверки ответов.</p>') + '</div></section>';
+  h += '<nav class="pager">' + (n > 0 ? '<a class="btn ghost" href="#/' + n + '">← Назад</a>' : '<span></span>') +
+    (n < ITEMS.length - 1 ? '<a class="btn' + (checked ? '' : ' ghost') + '" href="#/' + (n + 2) + '">Дальше →</a>' : '<a class="btn" href="#/">К списку</a>') + '</nav></main>';
+  return h;
+}
+
+function route() {
+  var m = location.hash.match(/^#\/(\d+)/), n = m ? +m[1] - 1 : -1;
+  document.querySelectorAll("video").forEach(function (v) { try { v.pause(); } catch (e) {} });
+  $("app").innerHTML = (n >= 0 && n < ITEMS.length) ? item(n) : home();
+  document.title = (n >= 0 && n < ITEMS.length) ? pad(n + 1) + ". " + ITEMS[n].title + " — Практика · Логика" : "Практика · Логика";
+  window.scrollTo(0, 0);
+  var vb = $("vb"); if (vb) vb.addEventListener("play", function () { ST.seen[n] = 1; save(); });
+}
+
+document.addEventListener("click", function (e) {
+  var b = e.target.closest ? e.target.closest("[data-a]") : null; if (!b) return;
+  var a = b.getAttribute("data-a");
+  if (a === "check") {
+    var m = location.hash.match(/^#\/(\d+)/), n = +m[1] - 1, it = ITEMS[n], res = [];
+    for (var qi = 0; qi < it.qs.length; qi++) {
+      var c = document.querySelector('input[name="q' + qi + '"]:checked');
+      if (!c) { $("err").textContent = "Ответьте на все вопросы."; return; }
+      res.push(+c.value);
+    }
+    ST.ans[n] = res; save();
+    var y = window.scrollY; route(); window.scrollTo(0, y);
+  } else if (a === "reset") {
+    if (b.getAttribute("data-armed") !== "1") { b.setAttribute("data-armed", "1"); b.textContent = "Точно? Нажмите ещё раз"; return; }
+    ST = { ans: {}, seen: {} }; save(); route();
+  }
+});
+window.addEventListener("hashchange", route);
+route();
+
+</script>
+</body>
+</html>
