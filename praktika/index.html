@@ -75,6 +75,18 @@ video{display:block;width:100%;aspect-ratio:16/9;background:#000;border-radius:1
 .pager{display:flex;justify-content:space-between;gap:12px;margin-top:8px}
 :focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 @media (max-width:420px){.step{gap:10px}.sn{width:24px;height:24px;font-size:13px}}
+.rule{margin:-8px 0 18px;font-size:14px;color:var(--acc);font-weight:500}
+.chip{display:inline-block;align-self:flex-start;font-size:12.5px;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--rule);color:var(--dim);white-space:nowrap}
+.chip.warn{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.bar-top{gap:10px}
+.row.locked{opacity:.45;cursor:not-allowed}
+.row.locked .mark{font-weight:500}
+.sn.done{background:var(--ok)}
+.btn.off{background:var(--rule);color:var(--dim);cursor:not-allowed}
+#toast{position:fixed;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom,0px));margin:0 auto;width:max-content;max-width:90vw;
+  background:var(--ink);color:var(--paper);padding:12px 16px;border-radius:10px;font-size:14px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.25);
+  opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:20}
+#toast.show{opacity:1;transform:none}
 
 </style>
 </head>
@@ -227,16 +239,21 @@ var ITEMS = [
   ]}
 ];
 
-/* Практика · Логика. Список фрагментов → фрагмент → вопросы → разбор.
-   Ответы и прогресс хранятся в этом браузере (localStorage). */
-var KEY = "praktika_logika_v1";
-var ST = { ans: {}, seen: {} };   // ans[n] = [выбранный вариант (индекс в исходном списке)…], seen[n] = открыл разбор
+/* Практика · Логика. Фрагменты открываются по порядку:
+   фрагмент досмотрен → вопросы → проверка → разбор досмотрен → следующий.
+   Уход со страницы считается; каждые 3 выхода — минус балл. Всё хранится в этом браузере. */
+var KEY = "praktika_logika_v2";
+var ST = { ans: {}, wa: {}, wb: {}, leaves: 0 };
 try { var raw = localStorage.getItem(KEY); if (raw) { var o = JSON.parse(raw); if (o && o.ans) ST = o; } } catch (e) {}
+ST.wa = ST.wa || {}; ST.wb = ST.wb || {}; ST.leaves = ST.leaves || 0;
 function save() { try { localStorage.setItem(KEY, JSON.stringify(ST)); } catch (e) {} }
+
+var PER = 3;      // сколько выходов — один штрафной балл
 
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
 function pad(n) { return (n < 10 ? "0" : "") + n; }
+function plural(n, a, b, c) { var m = n % 10, h = n % 100; return (m === 1 && h !== 11) ? a : (m >= 2 && m <= 4 && (h < 12 || h > 14)) ? b : c; }
 
 /* Порядок вариантов перемешан, но одинаково при каждой загрузке. */
 function order(n, qi, len) {
@@ -246,77 +263,148 @@ function order(n, qi, len) {
   for (var j = len - 1; j > 0; j--) { var k = Math.floor(rnd() * (j + 1)); var t2 = a[j]; a[j] = a[k]; a[k] = t2; }
   return a;
 }
-function done(n) { return !!ST.ans[n]; }
+function answered(n) { return !!ST.ans[n]; }
+function complete(n) { return answered(n) && !!ST.wb[n]; }
+function unlocked(n) { return n === 0 || complete(n - 1); }
+function firstOpen() { for (var n = 0; n < ITEMS.length; n++) if (!complete(n)) return n; return ITEMS.length - 1; }
 function score(n) { var a = ST.ans[n]; if (!a) return 0; return ITEMS[n].qs.reduce(function (s, q, i) { return s + (a[i] === q.a ? 1 : 0); }, 0); }
-function total() { var s = 0, m = 0; ITEMS.forEach(function (it, n) { m += it.qs.length; s += score(n); }); return [s, m]; }
+function penalty() { return Math.floor(ST.leaves / PER); }
+function total() {
+  var s = 0, m = 0; ITEMS.forEach(function (it, n) { m += it.qs.length; s += score(n); });
+  return { right: s, max: m, pen: penalty(), pts: Math.max(0, s - penalty()) };
+}
+
+function leavesChip() {
+  var p = penalty(), left = PER - ST.leaves % PER;
+  return '<span class="chip' + (ST.leaves ? ' warn' : '') + '" title="Каждые ' + PER + ' выхода со страницы — минус балл">Выходов: ' + ST.leaves +
+    (p ? ' · штраф −' + p : '') + '</span>';
+}
 
 /* ---------- список ---------- */
 function home() {
-  var t = total(), cnt = ITEMS.filter(function (_, n) { return done(n); }).length;
+  var t = total(), cnt = ITEMS.filter(function (_, n) { return complete(n); }).length;
   var h = '<header class="hero"><p class="kicker">Практика</p><h1>Логика</h1>' +
-    '<p class="lead">Посмотрите фрагмент ролика, ответьте на вопросы, затем откройте разбор. Ищите, где рассуждение ломается: тезис, аргументы или связь между ними.</p>' +
+    '<p class="lead">Посмотрите фрагмент ролика, ответьте на вопросы, затем посмотрите разбор. Фрагменты открываются по порядку. Ищите, где рассуждение ломается: тезис, аргументы или связь между ними.</p>' +
+    '<p class="rule">Не уходите со страницы: каждый выход фиксируется, каждые ' + PER + ' выхода — минус балл.</p>' +
     '<div class="meter"><div class="bar"><i style="width:' + Math.round(cnt / ITEMS.length * 100) + '%"></i></div>' +
-    '<span>Пройдено ' + cnt + ' из ' + ITEMS.length + ' · верных ответов ' + t[0] + ' из ' + t[1] + '</span></div></header><main class="wrap">';
+    '<span>Пройдено ' + cnt + ' из ' + ITEMS.length + ' · баллы ' + t.pts + ' из ' + t.max +
+    (t.pen ? ' (верных ' + t.right + ', штраф −' + t.pen + ')' : '') + '</span>' + leavesChip() + '</div></header><main class="wrap">';
   SOURCES.forEach(function (src, si) {
     h += '<h2 class="src">' + esc(src) + '</h2><ol class="list">';
     ITEMS.forEach(function (it, n) {
       if (it.src !== si) return;
-      var st = done(n) ? (score(n) === it.qs.length ? "ok" : "part") : "";
-      h += '<li><a class="row ' + st + '" href="#/' + (n + 1) + '"><span class="num">' + pad(n + 1) + '</span>' +
-        '<span class="rt">' + esc(it.title) + (done(n) ? '<small>' + esc(it.kind) + '</small>' : '') + '</span>' +
-        '<span class="mark">' + (done(n) ? score(n) + '/' + it.qs.length : '') + '</span></a></li>';
+      var open = unlocked(n), st = answered(n) ? (score(n) === it.qs.length ? "ok" : "part") : "";
+      var inner = '<span class="num">' + pad(n + 1) + '</span><span class="rt">' + esc(it.title) +
+        (answered(n) ? '<small>' + esc(it.kind) + '</small>' : '') + '</span>' +
+        '<span class="mark">' + (answered(n) ? score(n) + '/' + it.qs.length : (open ? '' : 'закрыто')) + '</span>';
+      h += '<li>' + (open ? '<a class="row ' + st + '" href="#/' + (n + 1) + '">' + inner + '</a>' : '<span class="row locked">' + inner + '</span>') + '</li>';
     });
     h += '</ol>';
   });
-  h += '<p class="foot">Фрагменты — из роликов канала «Когнитивный надзор». Ответы сохраняются только в этом браузере.' +
-    (cnt ? ' <button class="lnk" data-a="reset">Начать заново</button>' : '') + '</p></main>';
+  h += '<p class="foot">Фрагменты — из роликов канала «Когнитивный надзор». Ответы сохраняются только в этом браузере.</p></main>';
   return h;
 }
 
 /* ---------- фрагмент ---------- */
 function item(n) {
-  var it = ITEMS[n], a = ST.ans[n], checked = !!a;
-  var h = '<nav class="bar-top"><a href="#/" class="back">← Все фрагменты</a><span>' + pad(n + 1) + ' / ' + ITEMS.length + '</span></nav><main class="wrap">';
+  var it = ITEMS[n], a = ST.ans[n], checked = !!a, sawA = !!ST.wa[n], sawB = !!ST.wb[n];
+  var h = '<nav class="bar-top"><a href="#/" class="back">← Все фрагменты</a>' + leavesChip() + '<span>' + pad(n + 1) + ' / ' + ITEMS.length + '</span></nav><main class="wrap">';
   h += '<p class="kicker">' + esc(SOURCES[it.src].replace(/\..*/, "")) + ' · фрагмент ' + pad(n + 1) + '</p><h1 class="ttl">' + esc(it.title) + '</h1>';
-  h += '<section class="step"><div class="sn">1</div><div class="sb"><h2>Смотрите фрагмент</h2>' +
-    '<video src="video/' + pad(n + 1) + 'a.mp4" controls playsinline preload="metadata"></video></div></section>';
-  h += '<section class="step"><div class="sn">2</div><div class="sb"><h2>Ответьте на вопросы</h2>';
-  it.qs.forEach(function (q, qi) {
-    h += '<fieldset class="q"><legend>' + esc(q.q) + '</legend>';
-    order(n, qi, q.o.length).forEach(function (oi) {
-      var cls = "opt";
-      if (checked) { if (oi === q.a) cls += " right"; else if (a[qi] === oi) cls += " wrong"; else cls += " dim"; }
-      h += '<label class="' + cls + '"><input type="radio" name="q' + qi + '" value="' + oi + '"' + (checked ? ' disabled' : '') +
-        (checked && a[qi] === oi ? ' checked' : '') + '><span>' + esc(q.o[oi]) + '</span></label>';
+
+  h += '<section class="step"><div class="sn' + (sawA ? ' done' : '') + '">1</div><div class="sb"><h2>Смотрите фрагмент</h2>' +
+    '<video src="video/' + pad(n + 1) + 'a.mp4" controls playsinline preload="metadata" data-w="a" controlslist="nodownload noplaybackrate" disablepictureinpicture></video>' +
+    (sawA ? '' : '<p class="hint">Досмотрите фрагмент до конца — перематывать вперёд нельзя.</p>') + '</div></section>';
+
+  h += '<section class="step' + (sawA ? '' : ' locked') + '"><div class="sn' + (checked ? ' done' : '') + '">2</div><div class="sb"><h2>Ответьте на вопросы</h2>';
+  if (!sawA) h += '<p class="hint">Вопросы откроются, когда фрагмент будет досмотрен.</p>';
+  else {
+    it.qs.forEach(function (q, qi) {
+      h += '<fieldset class="q"><legend>' + esc(q.q) + '</legend>';
+      order(n, qi, q.o.length).forEach(function (oi) {
+        var cls = "opt";
+        if (checked) { if (oi === q.a) cls += " right"; else if (a[qi] === oi) cls += " wrong"; else cls += " dim"; }
+        h += '<label class="' + cls + '"><input type="radio" name="q' + qi + '" value="' + oi + '"' + (checked ? ' disabled' : '') +
+          (checked && a[qi] === oi ? ' checked' : '') + '><span>' + esc(q.o[oi]) + '</span></label>';
+      });
+      if (checked && q.x) h += '<p class="expl">' + esc(q.x) + '</p>';
+      h += '</fieldset>';
     });
-    if (checked && q.x) h += '<p class="expl">' + esc(q.x) + '</p>';
-    h += '</fieldset>';
-  });
-  if (!checked) h += '<p class="err" id="err"></p><button class="btn" data-a="check">Проверить</button>';
-  else h += '<p class="res">' + (score(n) === it.qs.length ? 'Всё верно.' : 'Верно ' + score(n) + ' из ' + it.qs.length + '.') +
-    ' Ошибка в ролике: <b>' + esc(it.kind) + '</b>.</p>';
+    if (!checked) h += '<p class="err" id="err"></p><button class="btn" data-a="check">Проверить</button>';
+    else h += '<p class="res">' + (score(n) === it.qs.length ? 'Всё верно.' : 'Верно ' + score(n) + ' из ' + it.qs.length + '.') +
+      ' Ошибка в ролике: <b>' + esc(it.kind) + '</b>.</p>';
+  }
   h += '</div></section>';
-  h += '<section class="step' + (checked ? '' : ' locked') + '"><div class="sn">3</div><div class="sb"><h2>Разбор</h2>' +
-    (checked ? '<video src="video/' + pad(n + 1) + 'b.mp4" controls playsinline preload="metadata" id="vb"></video>'
+
+  h += '<section class="step' + (checked ? '' : ' locked') + '"><div class="sn' + (sawB ? ' done' : '') + '">3</div><div class="sb"><h2>Разбор</h2>' +
+    (checked ? '<video src="video/' + pad(n + 1) + 'b.mp4" controls playsinline preload="metadata" data-w="b" controlslist="nodownload noplaybackrate" disablepictureinpicture></video>' +
+      (sawB ? '' : '<p class="hint">Досмотрите разбор, чтобы перейти дальше.</p>')
       : '<p class="hint">Откроется после проверки ответов.</p>') + '</div></section>';
+
+  var next = complete(n);
   h += '<nav class="pager">' + (n > 0 ? '<a class="btn ghost" href="#/' + n + '">← Назад</a>' : '<span></span>') +
-    (n < ITEMS.length - 1 ? '<a class="btn' + (checked ? '' : ' ghost') + '" href="#/' + (n + 2) + '">Дальше →</a>' : '<a class="btn" href="#/">К списку</a>') + '</nav></main>';
+    (n < ITEMS.length - 1
+      ? (next ? '<a class="btn" href="#/' + (n + 2) + '">Дальше →</a>' : '<span class="btn off" aria-disabled="true">Дальше →</span>')
+      : (next ? '<a class="btn" href="#/">Итог</a>' : '<span class="btn off" aria-disabled="true">Итог</span>')) + '</nav></main>';
   return h;
 }
 
-function route() {
+/* Видео: перемотка вперёд дальше просмотренного запрещена, «досмотрено» — по событию ended. */
+function guardVideo(v, n) {
+  var w = v.getAttribute("data-w"), max = 0;
+  var seen = w === "a" ? ST.wa[n] : ST.wb[n];
+  v.addEventListener("timeupdate", function () { if (!v.seeking && v.currentTime > max && v.currentTime - max < 2) max = v.currentTime; });
+  v.addEventListener("seeking", function () { if (!seen && v.currentTime > max + 1) v.currentTime = max; });
+  v.addEventListener("ratechange", function () { if (v.playbackRate !== 1) v.playbackRate = 1; });
+  v.addEventListener("ended", function () {
+    if (seen) return;
+    seen = true;
+    if (w === "a") ST.wa[n] = 1; else ST.wb[n] = 1;
+    save();
+    var y = window.scrollY; route(true); window.scrollTo(0, y);
+  });
+}
+
+function route(keep) {
   var m = location.hash.match(/^#\/(\d+)/), n = m ? +m[1] - 1 : -1;
+  if (n >= ITEMS.length) n = -1;
+  if (n >= 0 && !unlocked(n)) { location.replace("#/" + (firstOpen() + 1)); return; }
   document.querySelectorAll("video").forEach(function (v) { try { v.pause(); } catch (e) {} });
-  $("app").innerHTML = (n >= 0 && n < ITEMS.length) ? item(n) : home();
-  document.title = (n >= 0 && n < ITEMS.length) ? pad(n + 1) + ". " + ITEMS[n].title + " — Практика · Логика" : "Практика · Логика";
-  window.scrollTo(0, 0);
-  var vb = $("vb"); if (vb) vb.addEventListener("play", function () { ST.seen[n] = 1; save(); });
+  $("app").innerHTML = n >= 0 ? item(n) : home();
+  document.title = n >= 0 ? pad(n + 1) + ". " + ITEMS[n].title + " — Практика · Логика" : "Практика · Логика";
+  if (!keep) window.scrollTo(0, 0);
+  document.querySelectorAll("video[data-w]").forEach(function (v) { guardVideo(v, n); });
+}
+
+/* ---------- уход со страницы ---------- */
+var away = false;
+function leave() { if (away) return; away = true; ST.leaves++; ST.lastLeave = Date.now(); save(); }
+/* Перезагрузка страницы выходом не считается. */
+(function () {
+  try {
+    var nav = performance.getEntriesByType && performance.getEntriesByType("navigation")[0];
+    if (nav && nav.type === "reload" && ST.lastLeave && Date.now() - ST.lastLeave < 8000 && ST.leaves > 0) { ST.leaves--; ST.lastLeave = 0; save(); }
+  } catch (e) {}
+})();
+function back() {
+  if (!away) return; away = false;
+  var chips = document.querySelectorAll(".chip"); chips.forEach(function (c) { c.outerHTML = leavesChip(); });
+  var left = PER - ST.leaves % PER;
+  toast('Вы покидали страницу. Выходов: ' + ST.leaves + '. ' +
+    (ST.leaves % PER === 0 ? 'Снят балл.' : 'До штрафа: ' + left + ' ' + plural(left, 'выход', 'выхода', 'выходов') + '.'));
+}
+document.addEventListener("visibilitychange", function () { if (document.hidden) leave(); else back(); });
+window.addEventListener("pagehide", leave);
+window.addEventListener("pageshow", function () { if (away) back(); });
+
+var toastT = null;
+function toast(msg) {
+  var t = $("toast"); if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.className = "show"; clearTimeout(toastT); toastT = setTimeout(function () { t.className = ""; }, 4500);
 }
 
 document.addEventListener("click", function (e) {
   var b = e.target.closest ? e.target.closest("[data-a]") : null; if (!b) return;
-  var a = b.getAttribute("data-a");
-  if (a === "check") {
+  if (b.getAttribute("data-a") === "check") {
     var m = location.hash.match(/^#\/(\d+)/), n = +m[1] - 1, it = ITEMS[n], res = [];
     for (var qi = 0; qi < it.qs.length; qi++) {
       var c = document.querySelector('input[name="q' + qi + '"]:checked');
@@ -324,13 +412,10 @@ document.addEventListener("click", function (e) {
       res.push(+c.value);
     }
     ST.ans[n] = res; save();
-    var y = window.scrollY; route(); window.scrollTo(0, y);
-  } else if (a === "reset") {
-    if (b.getAttribute("data-armed") !== "1") { b.setAttribute("data-armed", "1"); b.textContent = "Точно? Нажмите ещё раз"; return; }
-    ST = { ans: {}, seen: {} }; save(); route();
+    var y = window.scrollY; route(true); window.scrollTo(0, y);
   }
 });
-window.addEventListener("hashchange", route);
+window.addEventListener("hashchange", function () { route(); });
 route();
 
 </script>
